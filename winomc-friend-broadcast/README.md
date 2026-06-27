@@ -850,7 +850,7 @@ Das Repository basiert ursprünglich auf der Arbeit von:
 
 Weitere Anpassungen, Umbenennung und WinoMC-spezifische Add-ons werden gepflegt von:
 
-* Kasawino
+* kasawino69
 
 Das Friend-Broadcast-Add-on nutzt MCXboxBroadcast als technische Grundlage für die Xbox-Live-/Freundeslisten-Funktionalität.
 

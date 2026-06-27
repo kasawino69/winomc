@@ -8,7 +8,7 @@ Der Fokus dieses Repositorys liegt auf einfach nutzbaren Minecraft Add-ons für 
 
 Klicke auf den folgenden Button, um dieses Repository direkt in Home Assistant hinzuzufügen:
 
-[![Repository zu Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fkasawino69%2Fwinomc-minecraft-homeassistant)
+[![Repository zu Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/kasawino69/winomc)
 
 Alternativ kann das Repository manuell hinzugefügt werden:
 
@@ -19,7 +19,7 @@ Alternativ kann das Repository manuell hinzugefügt werden:
 5. Folgende URL einfügen:
 
 ```text
-https://github.com/kasawino69/winomc-minecraft-homeassistant
+https://github.com/kasawino69/winomc
 ```
 
 ## Add-ons
@@ -48,7 +48,7 @@ Dieses Repository basiert ursprünglich auf der Arbeit von:
 
 Das ursprüngliche Projekt steht unter der MIT-Lizenz. Der ursprüngliche Copyright-Hinweis und die Lizenz bleiben entsprechend erhalten.
 
-Weitere Anpassungen, Umbenennungen und WinoMC-spezifische Add-ons werden von Kasawino gepflegt.
+Weitere Anpassungen, Umbenennungen und WinoMC-spezifische Add-ons werden von kasawino69 gepflegt.
 
 Die ursprünglichen Vorlagen und Inspirationen stammen unter anderem von:
 
