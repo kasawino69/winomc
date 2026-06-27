@@ -38,13 +38,13 @@ Oder manuell:
 5. Diese URL einfügen:
 
 ```text
-https://github.com/kasawino69/winomc-beta
+https://github.com/kasawino69/winomc
 ```
 
 Danach das Add-on installieren:
 
 ```text
-[BETA] WinoMC Bedrock Server
+WinoMC Bedrock Server
 ```
 
 ---
