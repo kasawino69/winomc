@@ -1,4 +1,4 @@
-name: "[BETA] WinoMC Bedrock Server"
+name: "WinoMC Bedrock Server"
 description: Bedrock Minecraft Server auf Home Assistant
 version: 1.4.8
 slug: winomc-bedrock
@@ -17,7 +17,7 @@ ingress: true
 ingress_port: 8099
 ingress_stream: true
 panel_icon: mdi:console
-panel_title: "[BETA] WinoMC Console"
+panel_title: "WinoMC Console"
 panel_admin: true
 
 ports_description:

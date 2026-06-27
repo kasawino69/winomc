@@ -1,4 +1,4 @@
-# [BETA] WinoMC Blueprints
+# WinoMC Blueprints
 
 Dieses Verzeichnis enthält Home-Assistant-Blueprints für die WinoMC Add-ons.
 
