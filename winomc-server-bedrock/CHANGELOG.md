@@ -5,6 +5,105 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.4.8
+
+Bereinigung und Dokumentation
+
+### 1.4.7
+
+* Experimentelle Unterstützung für `aarch64` / ARM64 ergänzt
+* Add-on-Architektur um `aarch64` erweitert
+* Box64 wird bei ARM64-Builds installiert
+* Native Runtime erkennt ARM64 zur Laufzeit und startet den Mojang Bedrock Dedicated Server über `box64`
+* Neue Option `USE_BOX64` ergänzt
+* `amd64` bleibt unverändert und startet weiterhin direkt über `./bedrock_server`
+* Vorbereitung für spätere eigene WinoMC-ARM64-Base fortgesetzt
+
+
+### 1.4.6
+
+* Native Unterstützung für `ENABLE_BDS_V6BIND_FIX` ergänzt
+* WinoMC-eigener IPv6-Bind-Fix wird jetzt aus Quellcode im Repository gebaut
+* Keine externe Download-Abhängigkeit für den IPv6-Fix beim Docker-Build
+* Native Runtime setzt `LD_PRELOAD`, wenn `ENABLE_BDS_V6BIND_FIX=true` aktiv ist
+* Warnung ergänzt, wenn IPv4- und IPv6-Port gleich sind, der IPv6-Bind-Fix aber deaktiviert ist
+* Dual-Stack-Betrieb mit gleichem IPv4-/IPv6-Port vorbereitet
+
+### 1.4.4
+
+* Native `MC_PACK`-Importlogik ergänzt
+* Unterstützung für `.mcpack`, `.mcaddon`, `.mcworld`, `.mctemplate` und `.zip` ergänzt
+* `MC_PACK` kann auf eine Datei, einen Ordner unter `/share/winomc/import` oder eine HTTP/HTTPS-URL zeigen
+* `FORCE_WORLD_COPY` nativ umgesetzt
+* `FORCE_PACK_COPY` nativ umgesetzt
+* Native Paket-Backups vor BDS-Updates ergänzt
+* `PACKAGE_BACKUP_KEEP` zur Begrenzung alter Paket-Backups nativ umgesetzt
+* Weitere itzg-Komfortfunktionen in die native WinoMC Runtime übernommen
+
+
+### 1.4.3
+
+* Native Runtime weiter bereinigt
+* `VERSION=EXISTING` schreibt jetzt auch `allowlist.json` und `permissions.json`, bevor der vorhandene Bedrock Server gestartet wird
+* Fehlerzweig für `VERSION=EXISTING` vereinfacht
+* Doppelte Log-Ausgabe bei `BDS_AUTO_UPDATE=false` entfernt
+* Doppelte Erstellung von `server.properties` bei `BDS_AUTO_UPDATE=false` entfernt
+* Kleine Stabilitäts- und Wartbarkeitsverbesserungen an `winomc-native-start`
+
+### 1.4.2
+
+Bereinigung
+
+### 1.4.1
+
+* Dockerfile final auf direkte Ubuntu-Basis umgestellt
+* Veraltete `build.yaml`-Abhängigkeit entfernt
+* Build-Probleme durch nicht gesetztes `BUILD_FROM` behoben
+* Native WinoMC Runtime erfolgreich mit eigener Basis gebaut und gestartet
+* Add-on-Update auf native Runtime erfolgreich getestet
+* Alte itzg-/Home-Assistant-Base-Abhängigkeit weiter bereinigt
+
+### 1.4.0
+
+* Docker-Basis von `itzg/minecraft-bedrock-server` auf eine eigene Ubuntu-basierte WinoMC-Runtime umgestellt
+* Native Runtime ist jetzt der Standard für den Bedrock Server
+* `itzg`-Runtime wird nicht mehr benötigt und bei alten Einstellungen automatisch auf `native` umgeleitet
+* Architektur vorübergehend auf `amd64` begrenzt, da der native Mojang Bedrock Dedicated Server ohne itzg-/Box64-Hilfen getestet wird
+* Benötigte Systempakete für nativen BDS-Start direkt im WinoMC-Image ergänzt
+* Vorbereitung für eine spätere eigene `ghcr.io/kasawino69/winomc-bedrock-base` fortgesetzt
+
+### 1.3.9
+
+Umstellung auf Native
+
+### 1.3.8.1
+
+Fehlerbehebungen
+
+### 1.3.8
+
+* `BDS_DIRECT_DOWNLOAD_URL` bleibt als optionale Expertenoption ohne Pflichtfeld erhalten
+* Native WinoMC Bedrock Runtime erfolgreich startfähig gemacht
+* Nativer Start lädt den offiziellen Mojang Bedrock Dedicated Server, schreibt `server.properties` und startet den Server ohne `/opt/bedrock-entry.sh`
+* Native Runtime um `allowlist.json` aus `ALLOW_LIST_USERS` erweitert
+* Native Runtime um `permissions.json` aus `OPS`, `MEMBERS` und `VISITORS` erweitert
+* XUID-Auflösung für Permissions vorbereitet, damit Gamertags nach Möglichkeit automatisch aufgelöst werden
+* Vorbereitung für die spätere Umstellung von der itzg-Basis auf eine eigene WinoMC-/Home-Assistant-Base fortgesetzt
+
+### 1.3.7
+
+Fehlerbehebungen
+
+### 1.3.6
+
+* Native WinoMC Bedrock Runtime als Vorschau vorbereitet
+* Neue Option `WINOMC_RUNTIME_MODE` ergänzt
+* `itzg` bleibt als Standard- und Fallback-Runtime erhalten
+* Neuer nativer BDS-Downloader für den offiziellen Mojang Bedrock Dedicated Server ergänzt
+* Native Runtime schreibt `server.properties` direkt aus den Home-Assistant-Add-on-Optionen
+* Vorbereitung für spätere vollständige Entfernung der itzg-Runtime
+* Backup-Ausschluss für interne WinoMC-BDS-Dateien ergänzt
+
 ### 1.3.5
 
 * WinoMC Live Console weiter verbessert
