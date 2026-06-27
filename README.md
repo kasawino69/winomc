@@ -237,8 +237,6 @@ Auf amd64 wird Box64 nicht verwendet.
 
 ### Hinweise
 
-WinoMC ist aktuell Beta-Software.
-
 Minecraft Bedrock, Home Assistant und verschiedene Geräte können sich unterschiedlich verhalten. Besonders Konsolen wie Nintendo Switch oder Xbox können bei LAN-Anzeige, manueller Verbindung und Netzwerkfreigaben eigene Einschränkungen haben.
 
 Dieses Projekt ist kein offizielles Minecraft-, Mojang-, Microsoft- oder Home-Assistant-Projekt.
