@@ -235,8 +235,26 @@ write_allowlist() {
       continue
     fi
 
-    jq -n --arg name "${entry}" \
-      '{ignoresPlayerLimit:false,name:$name}' >> "${tmp_file}"
+    case "${entry}" in
+      *:*)
+        name="$(printf '%s' "${entry}" | cut -d':' -f1)"
+        xuid="$(printf '%s' "${entry}" | cut -d':' -f2-)"
+        name="$(trim_value "${name}")"
+        xuid="$(trim_value "${xuid}")"
+
+        if [ -n "${name}" ] && [ -n "${xuid}" ]; then
+          jq -n \
+            --arg name "${name}" \
+            --arg xuid "${xuid}" \
+            '{ignoresPlayerLimit:false,name:$name,xuid:$xuid}' >> "${tmp_file}"
+        fi
+        ;;
+      *)
+        jq -n \
+          --arg name "${entry}" \
+          '{ignoresPlayerLimit:false,name:$name}' >> "${tmp_file}"
+        ;;
+    esac
   done
 
   IFS="${old_ifs}"

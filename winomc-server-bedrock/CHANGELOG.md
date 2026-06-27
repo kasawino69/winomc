@@ -5,6 +5,46 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.4.9
+
+* Fehlerbehebung für die Bedrock-Allowlist
+
+  * `ALLOW_LIST_USERS` unterstützt jetzt Einträge im Format `Gamertag:XUID`.
+  * Die `allowlist.json` wird nun korrekt mit getrennten Feldern für `name` und `xuid` erzeugt.
+  * Bestehende Einträge im bisherigen Format `Gamertag` bleiben weiterhin kompatibel.
+
+* Verbesserte Spieler- und Rechteverwaltung
+
+  * Allowlist-Nutzer können jetzt wahlweise nur per Gamertag oder per Gamertag mit XUID gepflegt werden.
+  * `OPS`, `MEMBERS` und `VISITORS` bleiben weiterhin für die `permissions.json` zuständig.
+  * Die Trennung zwischen Serverzugriff über Allowlist und Spielerrechten wurde klarer umgesetzt.
+
+* Fehlerbehebung für Verbindungsprobleme
+
+  * Ein möglicher Auslöser für Minecraft Bedrock Fehler wie `Spyglass` / `InitialConnection-45` wurde behoben.
+  * Der Fehler konnte auftreten, wenn `ALLOW_LIST=true` aktiv war und `ALLOW_LIST_USERS` Werte im Format `Gamertag:XUID` enthielt.
+  * Der Server hat diese Einträge bisher als vollständigen Spielernamen interpretiert, wodurch berechtigte Spieler blockiert werden konnten.
+
+* Verbesserte Dokumentation und Hinweise
+
+  * Hinweise zur korrekten Verwendung von `ALLOW_LIST_USERS` ergänzt.
+  * Beispiele für reine Gamertag-Einträge und Gamertag/XUID-Einträge ergänzt.
+  * Troubleshooting-Hinweis für `Spyglass` / `InitialConnection-45` ergänzt.
+
+* Empfohlene Schreibweisen für `ALLOW_LIST_USERS`
+
+  * Nur Gamertags:
+    `PlayerOne,PlayerTwo`
+  * Gamertags mit XUID:
+    `PlayerOne:1234567890123456,PlayerTwo:1234567890123456`
+
+* Allgemeine Optimierungen
+
+  * Robustere Verarbeitung von leeren oder fehlerhaften Allowlist-Einträgen.
+  * Verbesserte Kompatibilität mit der nativen WinoMC Bedrock Dedicated Server Laufzeit.
+  * Kleinere Stabilitäts- und Bedienbarkeitsverbesserungen.
+
+
 ### 1.4.8
 
 Bereinigung und Dokumentation
