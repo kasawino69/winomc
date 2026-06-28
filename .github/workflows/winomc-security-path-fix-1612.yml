@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - '.github/workflows/winomc-security-path-fix-1612.yml'
       - '.github/winomc-security-path-fix-1612.trigger'
 
 permissions:
@@ -26,40 +27,40 @@ jobs:
           git apply --check .github/winomc-security-path-fix-1612.patch
           git apply .github/winomc-security-path-fix-1612.patch
 
-      - name: Update version and changelog
+      - name: Update metadata
         shell: python
         run: |
           from pathlib import Path
-
           config = Path('winomc-server-bedrock/config.yaml')
           text = config.read_text(encoding='utf-8')
           text = text.replace('version: 1.6.1.1', 'version: 1.6.1.2', 1)
           config.write_text(text, encoding='utf-8')
-
           changelog = Path('winomc-server-bedrock/CHANGELOG.md')
           text = changelog.read_text(encoding='utf-8')
-          entry = '''### 1.6.1.2
-
-* CodeQL-Pfadwarnungen (`py/path-injection`) in der Web-Konsole gehärtet.
-* Pfadprüfung zentral auf `realpath` plus `commonpath` umgestellt.
-* Upload, JSON-Upload, Datei-Editor, ZIP-Export/Entpacken, Papierkorb und Download-Pfade prüfen Ziele vor Dateioperationen erneut gegen erlaubte WinoMC-Root-Verzeichnisse.
-* Temporäre Upload- und Exportdateien werden vor `open`, `replace`, `remove`, `move` und `copy` zusätzlich gegen erlaubte interne Verzeichnisse validiert.
-* Add-on-Version auf 1.6.1.2 angehoben, damit Home Assistant die Sicherheitskorrektur als Update erkennt.
-
-'''
+          lines = [
+              '### 1.6.1.2',
+              '',
+              '* CodeQL-Pfadwarnungen (`py/path-injection`) in der Web-Konsole gehärtet.',
+              '* Pfadprüfung zentral auf `realpath` plus `commonpath` umgestellt.',
+              '* Upload, JSON-Upload, Datei-Editor, ZIP-Export/Entpacken, Papierkorb und Download-Pfade prüfen Ziele vor Dateioperationen erneut gegen erlaubte WinoMC-Root-Verzeichnisse.',
+              '* Add-on-Version auf 1.6.1.2 angehoben, damit Home Assistant die Sicherheitskorrektur als Update erkennt.',
+              '',
+              ''
+          ]
+          entry = '\n'.join(lines)
           if '### 1.6.1.2' not in text:
               text = text.replace('### 1.6.1.1\n', entry + '### 1.6.1.1\n', 1)
           changelog.write_text(text, encoding='utf-8')
 
-      - name: Validate console server
+      - name: Validate
         run: |
           python3 -m py_compile winomc-server-bedrock/rootfs/usr/local/bin/winomc-console-server
 
-      - name: Commit WinoMC 1.6.1.2
+      - name: Commit result
         shell: bash
         run: |
           if git diff --quiet; then
-            echo "No changes to commit"
+            echo "No changes"
             exit 0
           fi
           git config user.name "github-actions[bot]"
