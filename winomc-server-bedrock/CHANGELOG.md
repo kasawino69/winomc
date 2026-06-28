@@ -5,6 +5,13 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.1.1
+
+* Fehler bei der Erstellung der `allowlist.json` behoben.
+* `ALLOW_LIST_USERS` im Format `Gamertag:XUID` wird jetzt korrekt in getrennte `name`- und `xuid`-Felder geschrieben.
+* Name-only-Einträge wie `Gamertag` bleiben als Fallback weiterhin möglich.
+* Verbindungsabbrüche mit Bedrock-Fehlerdetails wie `Boat` oder `Spyglass` bei aktivierter Allowlist behoben.
+
 ### 1.6.1
 
 * Klassische Dateiexplorer-Ansicht korrigiert: Ordner- und Dateiliste besitzen jetzt eine eigene Scrollhöhe.
