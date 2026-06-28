@@ -5,6 +5,13 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.1.2
+
+* CodeQL-Pfadwarnungen (`py/path-injection`) in der Web-Konsole gehärtet.
+* Pfadprüfung zentral auf `realpath` plus `commonpath` umgestellt.
+* Upload, JSON-Upload, Datei-Editor, ZIP-Export/Entpacken, Papierkorb und Download-Pfade prüfen Ziele vor Dateioperationen erneut gegen erlaubte WinoMC-Root-Verzeichnisse.
+* Add-on-Version auf 1.6.1.2 angehoben, damit Home Assistant die Sicherheitskorrektur als Update erkennt.
+
 ### 1.6.1.1
 
 * Fehler bei der Erstellung der `allowlist.json` behoben.
