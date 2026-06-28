@@ -15,9 +15,10 @@ jobs:
   apply-security-path-fix:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout fix branch
         uses: actions/checkout@v4
         with:
+          ref: fix/winomc-1.6.1.2-codeql-paths
           persist-credentials: true
 
       - name: Apply patch
@@ -56,7 +57,7 @@ jobs:
         run: |
           python3 -m py_compile winomc-server-bedrock/rootfs/usr/local/bin/winomc-console-server
 
-      - name: Commit result
+      - name: Commit result to fix branch
         shell: bash
         run: |
           if git diff --quiet; then
@@ -67,4 +68,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add winomc-server-bedrock/rootfs/usr/local/bin/winomc-console-server winomc-server-bedrock/config.yaml winomc-server-bedrock/CHANGELOG.md
           git commit -m "1.6.1.2"
-          git push
+          git push origin HEAD:fix/winomc-1.6.1.2-codeql-paths
