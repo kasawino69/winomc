@@ -27,7 +27,7 @@ WinoMC nutzt eine eigene native Runtime und basiert nicht mehr auf dem itzg-Imag
 
 Repository in Home Assistant hinzufügen:
 
-[![Repository zu Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/kasawino69/winomc-beta)
+[![Repository zu Home Assistant hinzufügen](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https://github.com/kasawino69/winomc)
 
 Alternativ manuell:
 
@@ -38,13 +38,13 @@ Alternativ manuell:
 5. Diese URL einfügen:
 
 ```text
-https://github.com/kasawino69/winomc-beta
+https://github.com/kasawino69/winomc
 ```
 
 Danach das Add-on installieren:
 
 ```text
-[BETA] WinoMC Bedrock Server
+WinoMC Bedrock Server
 ```
 
 ---
