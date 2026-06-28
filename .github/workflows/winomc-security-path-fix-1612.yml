@@ -24,8 +24,8 @@ jobs:
         shell: bash
         run: |
           set -eu
-          git apply --check .github/winomc-security-path-fix-1612.patch
-          git apply .github/winomc-security-path-fix-1612.patch
+          git apply -p0 --check .github/winomc-security-path-fix-1612.patch
+          git apply -p0 .github/winomc-security-path-fix-1612.patch
 
       - name: Update metadata
         shell: python
