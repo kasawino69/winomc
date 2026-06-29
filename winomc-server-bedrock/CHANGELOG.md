@@ -5,6 +5,48 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.13
+
+#### UX / Shell Cleanup
+
+* PC- und Mobile-Erkennung überarbeitet: schmale PC-Browserfenster werden nicht mehr fälschlich wie Mobile/Tablet behandelt.
+* Mobile bleibt Mobile: Die PC-Workbench ist auf Smartphones bewusst nicht mehr auswählbar und alte Desktop-/Workbench-Menüeinträge werden bereinigt.
+* Klassische PC-Ansicht behält auch bei kleineren Browserfenstern eine echte linke Navigation statt einer kaputten horizontalen Zwischenansicht.
+* Veraltete `Desktop-Modus`-/`Workbench`-Navigationseinträge werden beim Laden automatisch entfernt.
+
+#### Live Console
+
+* Eingeklappte Live Console zeigt jetzt in allen Ansichten nur noch **Ausklappen**.
+* Zusätzliche Größen-, Fenster- und Leer-Buttons werden im eingeklappten Zustand ausgeblendet.
+* iPhone/Safari-Darstellung verbessert: Die eingeklappte Konsole liegt höher und bleibt oberhalb der Browser-Bedienleiste erreichbar.
+* Menüpunkt **Konsole** wurde zur echten Kommandozentrale erweitert, statt leer oder redundant zu wirken.
+
+#### Intelligente Befehlseingabe
+
+* Neue nicht störende Befehlshilfe für Minecraft-Bedrock-Serverbefehle ergänzt.
+* Vorschläge erscheinen nur beim Tippen und werden erst per Klick/Touch übernommen.
+* Funktioniert ohne Tab-Taste und ist damit auch mobil bedienbar.
+* Enthält häufige Server-, Spieler-, Welt-, Gamerule-, Backup-, Chat-, Inventar- und Expertenbefehle.
+
+#### Dashboard
+
+* Dashboard-Kacheln können am PC per Drag & Drop neu angeordnet werden.
+* Mobile behält bewusst die sicheren Menüaktionen, da Drag & Drop auf Touch-Geräten weniger zuverlässig ist.
+* Kachel-Aktionen wurden in ein kompaktes Menü verschoben: Nach oben, Nach unten, Entfernen.
+* Die bisherigen Sortierpfeile liegen nicht mehr dauerhaft sichtbar im Layout.
+
+#### Dateimanager / PC Layout
+
+* Dateiexplorer erhält im PC-Modus mehr nutzbare Höhe.
+* Datei-Liste bekommt zusätzlichen unteren Scroll-Puffer, damit Elemente nicht von der Live Console verdeckt werden.
+* PC-Workbench-Dateifenster erhält größere Mindestabmessungen für sinnvolles Arbeiten.
+
+#### Maintenance
+
+* Version auf `WinoMCConsole/1.6.13` angehoben.
+* Keine Änderung an bestehenden Sicherheits-/CodeQL-Pfadprüfungen.
+* Datei syntaktisch geprüft und Paketstruktur vorbereitet.
+
 ### 1.6.12
 
 #### Webinterface / Rethinking
