@@ -5,30 +5,9 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
-### 1.6.14.6
+### 1.6.14.7
 
-#### PC-Desktop / Workbench
-
-* Gezielter Fix für die blockierende Fläche im unteren Desktopbereich.
-* Ursache: bestimmte Desktop-Fenster wurden mit fixer/gespeicherter Höhe geöffnet und deckten als leere, nicht sinnvoll bedienbare Fensterfläche den Desktop bis zur Taskleiste ab.
-* Übersicht, Dashboard, Server, Packs, Backups, Netzwerk und Experten nutzen im PC-Desktop nun natürliche Fensterhöhe statt dauerhaft großer Leerfläche.
-* Große Arbeitsfenster wie Dateien bleiben von dieser Änderung ausgenommen.
-* Veraltete gespeicherte Höhenwerte für einfache Desktop-Fenster werden bereinigt.
-* Klassische Card-Maximize-Overlays werden im PC-Desktop deaktiviert, damit sie keine Klicks blockieren.
-
-#### Nicht geändert
-
-* Keine Mobile-Änderungen.
-* Keine Live-Console-Änderungen.
-* Keine Backend-/Dateisystem-/Security-Änderungen.
-* Keine neuen Layoutmodi.
-
-#### Maintenance
-
-* Version auf `WinoMCConsole/1.6.14.6` angehoben.
-* Python-Syntaxprüfung durchgeführt.
-* Eingebettetes JavaScript mit Node geprüft.
-* Repo-ZIP-Struktur geprüft.
+WinoMC Console Fehlerbehebungen
 
 ### 1.6.14.4
 
