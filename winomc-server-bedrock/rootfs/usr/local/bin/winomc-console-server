@@ -3992,6 +3992,24 @@ INDEX_HTML = r"""<!doctype html>
     }
 
 
+
+    /* v1.6.14.10 classic PC console hardening
+       Scope: classic PC view only. The floating PC-Workbench console keeps its
+       draggable/resizable window behavior. In classic PC view the free drag
+       handle is hidden so it cannot resize the sidebar/navigation area; the
+       explicit console size buttons remain the supported controls. */
+    body.ux-desktop:not(.desktop-mode) .console-resize-handle {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      height: 0 !important;
+    }
+
+    body.ux-desktop:not(.desktop-mode) .console-inner {
+      padding-top: 10px;
+    }
+
 </style>
 </head>
 <body>
@@ -6812,6 +6830,7 @@ INDEX_HTML = r"""<!doctype html>
     document.addEventListener('click', event => {
       const button = event.target.closest?.('[data-console-size]');
       if (!button) return;
+      if (!isMobileConsoleShell16142()) return;
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
@@ -6821,6 +6840,7 @@ INDEX_HTML = r"""<!doctype html>
     document.addEventListener('pointerdown', event => {
       const button = event.target.closest?.('[data-console-size]');
       if (!button) return;
+      if (!isMobileConsoleShell16142()) return;
       // Prevent mobile Safari from converting taps around the console controls
       // into text selection or delayed synthetic clicks.
       event.stopPropagation();
@@ -6961,6 +6981,7 @@ INDEX_HTML = r"""<!doctype html>
       document.addEventListener('click', event => {
         const button = event.target.closest?.('[data-console-size]');
         if (!button) return;
+        if (!mobileShell()) return;
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation();
@@ -6976,6 +6997,7 @@ INDEX_HTML = r"""<!doctype html>
         }
         const button = event.target.closest?.('[data-console-size]');
         if (!button) return;
+        if (!mobileShell()) return;
         event.stopPropagation();
       }, true);
 
@@ -7290,6 +7312,34 @@ INDEX_HTML = r"""<!doctype html>
       console.info('[WinoMC UX] Desktop canvas hardening loaded ' + VERSION_16149);
     })();
 
+
+
+    /* v1.6.14.10 classic PC console runtime guard
+       Prevent older mobile hardening listeners from double-processing desktop
+       console buttons by relying on the original per-button handlers in PC
+       classic view. Keep labels synchronized after any mode change. */
+    (function hardenClassicPcConsole161410() {
+      function isClassicPcShell() {
+        return document.body.classList.contains('ux-desktop') && !document.body.classList.contains('desktop-mode');
+      }
+      function syncClassicPcConsoleLabels() {
+        if (!isClassicPcShell()) return;
+        const isFull = document.body.classList.contains('console-maximized');
+        document.querySelectorAll('[data-console-size="compact"]').forEach(button => button.setAttribute('aria-pressed', document.body.classList.contains('console-compact') ? 'true' : 'false'));
+        document.querySelectorAll('[data-console-size="normal"]').forEach(button => button.setAttribute('aria-pressed', (!document.body.classList.contains('console-compact') && !document.body.classList.contains('console-large') && !isFull) ? 'true' : 'false'));
+        document.querySelectorAll('[data-console-size="large"]').forEach(button => {
+          button.textContent = 'Groß';
+          button.setAttribute('aria-pressed', document.body.classList.contains('console-large') ? 'true' : 'false');
+        });
+        document.querySelectorAll('[data-console-size="fullscreen"]').forEach(button => {
+          button.textContent = isFull ? 'Normal' : 'Vollbild';
+          button.setAttribute('aria-pressed', isFull ? 'true' : 'false');
+        });
+        if (consoleCollapse) consoleCollapse.textContent = (document.body.classList.contains('console-collapsed') || document.body.classList.contains('console-hidden')) ? 'Ausklappen' : 'Einklappen';
+      }
+      window.addEventListener('resize', () => requestAnimationFrame(syncClassicPcConsoleLabels), { passive: true });
+      requestAnimationFrame(syncClassicPcConsoleLabels);
+    })();
 
 </script>
 </body>
@@ -8546,7 +8596,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.14.9"
+    server_version = "WinoMCConsole/1.6.14.10"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")

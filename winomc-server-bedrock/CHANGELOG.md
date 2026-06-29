@@ -5,7 +5,22 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.14.10
+
+* klassische PC-Ansicht: der freie Drag-Größenregler der Live Console wird ausgeblendet
+* dadurch kann er nicht mehr versehentlich die Navigations-/Layout-Höhe beeinflussen
+* die Größenknöpfe der Live Console funktionieren am PC wieder:
+* Kompakt
+* Normal
+* Groß
+* Vollbild
+* die PC-Workbench-Konsole bleibt weiterhin verschiebbar und größenveränderbar
+* der Desktop-Freiflächen-Fix aus 1.6.14.9 bleibt erhalten
+* Mobile wurde funktional nicht angefasst
+* Version gesetzt auf WinoMCConsole/1.6.14.10
+
 ### 1.6.14.9
+
 * PC-Desktop-Freifläche wird wieder bis zur Taskleiste korrekt als Desktop-Fläche behandelt
 der dunkle Blocker-Bereich unterhalb des Desktops wird beseitigt
 * Live Console wird nicht mehr beim Bewegen in der Größe verändert
