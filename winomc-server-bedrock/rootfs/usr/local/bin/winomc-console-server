@@ -2962,6 +2962,233 @@ INDEX_HTML = r"""<!doctype html>
       color: #fde68a !important;
     }
 
+
+
+    /* v1.6.13.2 Mobile Console + Editor UX refinement
+       Mobile no longer uses a drag resize handle: the Browser/Touchevent
+       behavior is too unreliable near the safe-area. Sizes are explicit:
+       compact = command input + ~3 log lines, normal = ~10 log lines,
+       large/maximized = full-screen bottom sheet. */
+    body.ux-mobile:not(.desktop-mode) .console-resize-handle {
+      display: none !important;
+      pointer-events: none !important;
+      touch-action: auto !important;
+      user-select: none !important;
+      -webkit-user-select: none !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) {
+      --console-height: min(380px, 58dvh) !important;
+      padding-bottom: calc(var(--console-height) + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-bottom-gap, 0px) + 18px) !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-compact {
+      --console-height: min(238px, 44dvh) !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-large,
+    body.ux-mobile:not(.desktop-mode).console-maximized {
+      --console-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--mobile-browser-bottom-gap, 0px) - 18px) !important;
+      padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-bottom-gap, 0px)) !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed {
+      --console-height: 78px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-dock {
+      height: calc(var(--console-height) + env(safe-area-inset-bottom, 0px)) !important;
+      max-height: calc(100dvh - 8px - var(--mobile-browser-bottom-gap, 0px)) !important;
+      bottom: max(0px, var(--mobile-browser-bottom-gap, 0px)) !important;
+      overflow: hidden !important;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-large .console-dock,
+    body.ux-mobile:not(.desktop-mode).console-maximized .console-dock {
+      top: calc(8px + env(safe-area-inset-top, 0px)) !important;
+      left: 8px !important;
+      right: 8px !important;
+      bottom: calc(8px + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-bottom-gap, 0px)) !important;
+      width: auto !important;
+      height: auto !important;
+      max-height: none !important;
+      border-radius: 18px !important;
+      z-index: 95 !important;
+      box-shadow: 0 28px 88px rgba(0, 0, 0, .72) !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-inner {
+      height: 100% !important;
+      min-height: 0 !important;
+      display: grid !important;
+      grid-template-rows: auto minmax(0, 1fr) auto !important;
+      gap: 8px !important;
+      overflow: hidden !important;
+      padding: 12px 12px calc(12px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-compact .console-inner {
+      grid-template-rows: auto minmax(58px, 1fr) auto !important;
+      gap: 7px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-head {
+      min-height: 42px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-controls {
+      min-width: 0 !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) #log {
+      min-height: 0 !important;
+      height: 100% !important;
+      max-height: none !important;
+      overflow: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+      user-select: text !important;
+      -webkit-user-select: text !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-compact #log {
+      max-height: 72px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .command-row {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) auto !important;
+      min-height: 42px !important;
+      gap: 7px !important;
+      flex: 0 0 auto !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .command-row input {
+      width: 100% !important;
+      min-width: 0 !important;
+      min-height: 42px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .command-row button {
+      width: auto !important;
+      min-width: 76px !important;
+      min-height: 42px !important;
+      padding-inline: 12px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-dock,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-dock {
+      height: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+      min-height: calc(78px + env(safe-area-inset-bottom, 0px)) !important;
+      top: auto !important;
+      left: 8px !important;
+      right: 8px !important;
+      width: auto !important;
+      border-radius: 16px !important;
+    }
+
+    body.ios-browser-shell.ux-mobile:not(.desktop-mode).console-collapsed .console-dock,
+    body.ios-browser-shell.ux-mobile:not(.desktop-mode).console-hidden .console-dock {
+      bottom: max(72px, var(--mobile-browser-bottom-gap, 0px)) !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-inner,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-inner {
+      grid-template-rows: auto !important;
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+      overflow: visible !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed #log,
+    body.ux-mobile:not(.desktop-mode).console-hidden #log,
+    body.ux-mobile:not(.desktop-mode).console-collapsed .command-row,
+    body.ux-mobile:not(.desktop-mode).console-hidden .command-row {
+      display: none !important;
+    }
+
+    /* Editor overlay: on mobile it owns the screen. The editor content gets
+       the flexible row; controls stay compact at the bottom and never float
+       over the textarea. */
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen {
+      position: fixed !important;
+      inset: calc(8px + env(safe-area-inset-top, 0px)) 8px calc(8px + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-bottom-gap, 0px)) 8px !important;
+      width: auto !important;
+      height: auto !important;
+      max-height: none !important;
+      z-index: 120 !important;
+      display: grid !important;
+      grid-template-rows: auto auto auto auto minmax(0, 1fr) auto !important;
+      overflow: hidden !important;
+      border-radius: 18px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open .card-header,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen .card-header {
+      order: 1 !important;
+      margin-bottom: 4px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open .file-path,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen .file-path {
+      order: 2 !important;
+      min-height: 38px !important;
+      overflow: auto !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open .file-meta,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen .file-meta,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open .readonly-note,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen .readonly-note {
+      order: 3 !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open .editor-box,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen .editor-box {
+      order: 5 !important;
+      min-height: 0 !important;
+      height: 100% !important;
+      max-height: none !important;
+      overflow: auto !important;
+      resize: none !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open .editor-actions,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen .editor-actions {
+      order: 6 !important;
+      position: static !important;
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      gap: 8px !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      margin: 0 !important;
+      padding: 8px 0 0 !important;
+      border-top: 1px solid rgba(51, 65, 85, .7) !important;
+      background: transparent !important;
+      scrollbar-width: thin !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open .editor-actions button,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen .editor-actions button {
+      flex: 0 0 auto !important;
+      width: auto !important;
+      min-width: max-content !important;
+      min-height: 38px !important;
+      padding: 8px 12px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open .info.warning-box,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen .info.warning-box {
+      display: none !important;
+    }
+
   </style>
 </head>
 <body>
@@ -5427,6 +5654,76 @@ INDEX_HTML = r"""<!doctype html>
 
     ensurePcWorkbenchNav();
 
+
+    /* v1.6.13.2: mobile console size buttons + editor visibility */
+    function isMobileShell16132() {
+      return document.body.classList.contains('ux-mobile') && !document.body.classList.contains('desktop-mode');
+    }
+
+    function refreshMobileConsoleLabels16132() {
+      const mobile = isMobileShell16132();
+      document.querySelectorAll('[data-console-size="large"]').forEach(button => {
+        button.textContent = mobile ? 'Vollbild' : 'Groß';
+        button.setAttribute('aria-label', mobile ? 'Live Console im Vollbild öffnen' : 'Live Console groß anzeigen');
+      });
+      document.querySelectorAll('[data-console-size="compact"]').forEach(button => {
+        button.setAttribute('aria-label', mobile ? 'Live Console kompakt mit Eingabe und drei Logzeilen anzeigen' : 'Live Console kompakt anzeigen');
+      });
+      document.querySelectorAll('[data-console-size="normal"]').forEach(button => {
+        button.setAttribute('aria-label', mobile ? 'Live Console normal mit etwa zehn Logzeilen anzeigen' : 'Live Console normal anzeigen');
+      });
+    }
+
+    const baseApplyConsoleSize16132 = applyConsoleSize;
+    applyConsoleSize = function(size) {
+      if (isMobileShell16132()) {
+        if (size === 'large' || size === 'maximized') {
+          setConsoleMode('maximized');
+          refreshMobileConsoleLabels16132();
+          return;
+        }
+        if (size === 'compact') {
+          setConsoleMode('compact');
+          refreshMobileConsoleLabels16132();
+          return;
+        }
+        setConsoleMode('normal');
+        refreshMobileConsoleLabels16132();
+        return;
+      }
+      baseApplyConsoleSize16132(size || 'normal');
+      refreshMobileConsoleLabels16132();
+    };
+
+    const baseSetConsoleMode16132 = setConsoleMode;
+    setConsoleMode = function(mode) {
+      baseSetConsoleMode16132(mode || 'normal');
+      if (isMobileShell16132()) {
+        document.documentElement.style.removeProperty('--console-height');
+      }
+      refreshMobileConsoleLabels16132();
+    };
+
+    const baseOpenEditorOverlay16132 = openEditorOverlay;
+    openEditorOverlay = function() {
+      baseOpenEditorOverlay16132();
+      if (!editorPanel) return;
+      editorPanel.classList.add('editor-open');
+      if (isMobileShell16132()) {
+        // The editor is a true mobile overlay; keep the console out of the way.
+        setConsoleMode('collapsed');
+      }
+      requestAnimationFrame(() => {
+        try {
+          editorPanel.focus?.({ preventScroll: true });
+          editorPanel.scrollIntoView?.({ block: 'center', inline: 'nearest' });
+          if (!isMobileShell16132()) window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (_) {}
+      });
+    };
+
+    refreshMobileConsoleLabels16132();
+
     initDesktopConsoleWindow(); initFileSplitResize(); initCardChrome(); initDesktopWorkbench(); initAdaptiveUx(); renderDashboard(); connectLogs(); loadStatus();
   </script>
 </body>
@@ -6586,7 +6883,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.13.1"
+    server_version = "WinoMCConsole/1.6.13.2"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")

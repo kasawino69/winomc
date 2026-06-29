@@ -5,6 +5,37 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.13.2
+
+#### UX / Mobile Live Console
+
+* Mobile Live-Console-Größenlogik überarbeitet.
+* Der mobile Zieh-/Resize-Griff wurde deaktiviert, da Touch-Browser diesen Bereich zu leicht als Markier-/Scrollgeste interpretieren.
+* Mobile Größen sind jetzt bewusst über Schaltflächen gesteuert:
+  * **Kompakt**: Eingabe bleibt sichtbar, Logbereich zeigt ungefähr drei Zeilen.
+  * **Normal**: größerer Logbereich mit ungefähr zehn Zeilen.
+  * **Vollbild**: Live Console öffnet als Vollbild-Bottom-Sheet ohne Seitenwechsel oder Refresh.
+* Im mobilen Kompaktmodus bleibt die Befehlseingabe sichtbar.
+* iOS-/Browser-Safe-Area bleibt berücksichtigt.
+
+#### UX / Mobile Editor
+
+* Datei-Editor auf Mobile neu ausgerichtet.
+* Editor öffnet jetzt als echtes Vollbild-Overlay über der Oberfläche.
+* Der Inhaltsbereich bekommt den Hauptplatz und ist nicht mehr auf wenige Zeilen gequetscht.
+* Editor-Bedienelemente liegen kompakt unten und überlappen den Inhalt nicht mehr.
+* Hinweisboxen werden mobil ausgeblendet, damit der Textbereich nutzbar bleibt.
+
+#### UX / Datei-Explorer
+
+* Beim Öffnen einer Datei im Editor wird der Editor sichtbar in den Fokus gebracht.
+* Das verhindert den Eindruck, dass beim Öffnen einer weiter unten liegenden Datei nichts passiert.
+
+#### Maintenance
+
+* Version auf `WinoMCConsole/1.6.13.2` angehoben.
+* Datei syntaktisch geprüft.
+
 ### 1.6.13.1
 
 #### UX / Navigation
