@@ -5,6 +5,38 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.1.4
+
+#### Security / CodeQL
+
+* CodeQL-Handling für `py/path-injection` im `winomc-console-server` erneut überarbeitet.
+* Pfadprüfung so angepasst, dass der geprüfte Pfad für CodeQL klarer als bereinigter Wert erkennbar ist:
+  * Normalisierung über `os.path.normpath(...)`
+  * Symlink-Auflösung über `os.path.realpath(...)`
+  * explizite Base-Prefix-Prüfung mit `startswith(...)`
+  * separate Behandlung des Root-Ordners selbst
+* `os.path.commonpath(...)` aus der zentralen CodeQL-relevanten Pfadprüfung entfernt, da CodeQL diese Custom-Hilfslogik nicht zuverlässig als Sanitizer erkannt hat.
+* Download-Auslieferung überarbeitet:
+  * validierter Download-Pfad wird nur einmal berechnet
+  * `isfile`, `getsize` und `open` arbeiten danach mit demselben geprüften lokalen Pfad
+  * kein erneutes Verschachteln von `assert_safe_download_path(...)` direkt im Filesystem-Sink
+* Schutz gegen Path-Traversal bleibt erhalten und wurde CodeQL-freundlicher formuliert.
+* Symlink-Schutz bleibt aktiv, um Ausbrüche aus erlaubten WinoMC-Verzeichnissen zu verhindern.
+
+#### Reliability
+
+* Datei erneut syntaktisch geprüft.
+* Leere `except: pass`-Blöcke bleiben entfernt.
+* Bestehende Sicherheitsprüfungen für Upload, Download, Editor, ZIP-Import, ZIP-Export, Papierkorb und Runtime-Dateien bleiben erhalten.
+
+#### Maintenance
+
+* Keine CodeQL-/LGTM-Suppression-Kommentare verwendet.
+* Kein reines Unterdrücken von Alerts.
+* Sicherheitslogik näher an das von CodeQL empfohlene Muster gebracht: erst normalisieren, dann gegen einen erlaubten Basisordner prüfen, danach erst Dateisystemzugriff.
+* Version für Release `1.6.1.4` vorbereitet.
+
+
 ### 1.6.1.3
 
 #### Security / CodeQL

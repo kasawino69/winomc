@@ -2595,7 +2595,8 @@ def log_warning(message):
 
 
 def canonical_path(path):
-    return os.path.realpath(os.path.abspath(str(path or "")))
+    # CodeQL-friendly canonicalization: normalize and resolve symlinks before any path check.
+    return os.path.normpath(os.path.realpath(os.path.abspath(str(path or ""))))
 
 
 def safe_component(value):
@@ -2629,12 +2630,12 @@ def normalize_rel_path(rel_path):
 
 
 def is_inside_base(base_path, candidate_path):
+    # Keep this deliberately simple and explicit: CodeQL's py/path-injection
+    # understands normalized path + prefix checks better than a custom commonpath helper.
     base_path = canonical_path(base_path)
     candidate_path = canonical_path(candidate_path)
-    try:
-        return os.path.commonpath([base_path, candidate_path]) == base_path
-    except (OSError, ValueError):
-        return False
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    return candidate_path == base_path or candidate_path.startswith(base_prefix)
 
 
 def assert_no_symlink_component(base_path, candidate_path, allow_missing=True):
@@ -2688,8 +2689,9 @@ def resolve_safe_path(root_key, rel_path="/"):
 def assert_safe_path(root_key, candidate_path, require_exists=False):
     base_path = allowed_root_base(root_key)
     candidate_abs = os.path.abspath(str(candidate_path or ""))
-    candidate_real = canonical_path(candidate_abs)
-    if not is_inside_base(base_path, candidate_real):
+    candidate_real = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if candidate_real != base_path and not candidate_real.startswith(base_prefix):
         raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
     assert_no_symlink_component(base_path, candidate_abs, allow_missing=not require_exists)
     if require_exists and not os.path.exists(candidate_real):
@@ -2700,8 +2702,9 @@ def assert_safe_path(root_key, candidate_path, require_exists=False):
 def assert_safe_internal_path(base_dir, candidate_path, require_exists=False):
     base_path = canonical_path(base_dir)
     candidate_abs = os.path.abspath(str(candidate_path or ""))
-    candidate_real = canonical_path(candidate_abs)
-    if not is_inside_base(base_path, candidate_real):
+    candidate_real = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if candidate_real != base_path and not candidate_real.startswith(base_prefix):
         raise ValueError("Interner Pfad außerhalb des erlaubten Bereichs blockiert.")
     assert_no_symlink_component(base_path, candidate_abs, allow_missing=not require_exists)
     if require_exists and not os.path.exists(candidate_real):
@@ -2715,9 +2718,10 @@ def allowed_runtime_bases():
 
 def assert_runtime_path(candidate_path, require_exists=False):
     candidate_abs = os.path.abspath(str(candidate_path or ""))
-    candidate_real = canonical_path(candidate_abs)
+    candidate_real = os.path.normpath(os.path.realpath(candidate_abs))
     for base_path in allowed_runtime_bases():
-        if is_inside_base(base_path, candidate_real):
+        base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+        if candidate_real == base_path or candidate_real.startswith(base_prefix):
             assert_no_symlink_component(base_path, candidate_abs, allow_missing=not require_exists)
             if require_exists and not os.path.exists(candidate_real):
                 raise FileNotFoundError("Runtime-Pfad existiert nicht.")
@@ -2782,31 +2786,38 @@ def open_safe_internal(base_dir, candidate_path, mode, *args, **kwargs):
 
 
 def path_exists_root(root_key, candidate_path):
-    return os.path.exists(assert_safe_path(root_key, candidate_path))
+    safe_path = assert_safe_path(root_key, candidate_path)
+    return os.path.exists(safe_path)
 
 
 def path_is_file_root(root_key, candidate_path):
-    return os.path.isfile(assert_safe_path(root_key, candidate_path))
+    safe_path = assert_safe_path(root_key, candidate_path)
+    return os.path.isfile(safe_path)
 
 
 def path_is_dir_root(root_key, candidate_path):
-    return os.path.isdir(assert_safe_path(root_key, candidate_path))
+    safe_path = assert_safe_path(root_key, candidate_path)
+    return os.path.isdir(safe_path)
 
 
 def path_is_link_root(root_key, candidate_path):
-    return os.path.islink(assert_safe_path(root_key, candidate_path))
+    safe_path = assert_safe_path(root_key, candidate_path)
+    return os.path.islink(safe_path)
 
 
 def stat_root(root_key, candidate_path):
-    return os.stat(assert_safe_path(root_key, candidate_path, require_exists=True))
+    safe_path = assert_safe_path(root_key, candidate_path, require_exists=True)
+    return os.stat(safe_path)
 
 
 def getsize_root(root_key, candidate_path):
-    return os.path.getsize(assert_safe_path(root_key, candidate_path, require_exists=True))
+    safe_path = assert_safe_path(root_key, candidate_path, require_exists=True)
+    return os.path.getsize(safe_path)
 
 
 def listdir_root(root_key, candidate_path):
-    return os.listdir(assert_safe_path(root_key, candidate_path, require_exists=True))
+    safe_path = assert_safe_path(root_key, candidate_path, require_exists=True)
+    return os.listdir(safe_path)
 
 
 def makedirs_root(root_key, candidate_path, exist_ok=True):
@@ -2883,11 +2894,12 @@ def move_safe_internal_to_root(internal_base, source_path, root_key, target_path
 
 def assert_safe_download_path(candidate_path):
     candidate_abs = os.path.abspath(str(candidate_path or ""))
-    candidate_real = canonical_path(candidate_abs)
+    candidate_real = os.path.normpath(os.path.realpath(candidate_abs))
     allowed_bases = [allowed_root_base(key) for key in FILE_ROOTS]
     allowed_bases.append(canonical_path(tempfile.gettempdir()))
     for base_path in allowed_bases:
-        if is_inside_base(base_path, candidate_real):
+        base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+        if candidate_real == base_path or candidate_real.startswith(base_prefix):
             assert_no_symlink_component(base_path, candidate_abs, allow_missing=False)
             return candidate_real
     raise ValueError("Download-Pfad außerhalb der erlaubten Bereiche blockiert.")
@@ -3480,7 +3492,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise FileNotFoundError("Datei nicht gefunden.")
             download_name = safe_download_name(download_name or os.path.basename(file_path))
             content_type = safe_content_type(content_type or mimetypes.guess_type(file_path)[0])
-            size = os.path.getsize(assert_safe_download_path(file_path))
+            size = os.path.getsize(file_path)
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(size))
