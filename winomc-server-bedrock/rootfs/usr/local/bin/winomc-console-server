@@ -71,7 +71,7 @@ INDEX_HTML = r"""<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WinoMC Adaptive Workbench 1.6.11.2</title>
+  <title>WinoMC Adaptive Workbench 1.6.11.3</title>
   <style>
     :root {
       color-scheme: dark;
@@ -2193,6 +2193,84 @@ INDEX_HTML = r"""<!doctype html>
       font-size: 12px !important;
     }
 
+
+    /* v1.6.11.3 classic/mobile stability fixes
+       - Collapsed classic console is no longer resizable by dragging the small handle.
+         This prevents the stale "Ausklappen" state from fighting with custom heights.
+       - The PC classic file explorer gets a deterministic viewport-sized internal scroll area.
+       - Mobile/tablet desktop switching is paired with JS hardening below. */
+    body:not(.desktop-mode).console-collapsed .console-resize-handle,
+    body:not(.desktop-mode).console-hidden .console-resize-handle {
+      display: none !important;
+      pointer-events: none !important;
+    }
+
+    body:not(.desktop-mode).console-collapsed .console-inner,
+    body:not(.desktop-mode).console-hidden .console-inner {
+      overflow: hidden !important;
+    }
+
+    @media (min-width: 1051px) {
+      body:not(.desktop-mode) .tab-panel[data-panel="files"].active {
+        height: calc(100dvh - var(--console-height) - 108px);
+        min-height: 320px;
+        max-height: calc(100dvh - var(--console-height) - 108px);
+        overflow: hidden !important;
+        display: grid !important;
+        grid-template-rows: auto minmax(0, 1fr);
+      }
+
+      body:not(.desktop-mode) .tab-panel[data-panel="files"].active > .card[data-card-id="files-toolbar"] {
+        min-height: 0;
+        overflow: visible;
+      }
+
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-manager-grid {
+        height: 100% !important;
+        max-height: none !important;
+        min-height: 0 !important;
+        overflow: hidden !important;
+      }
+
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-explorer-panel,
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .editor-panel {
+        height: 100% !important;
+        min-height: 0 !important;
+        max-height: 100% !important;
+        overflow: hidden !important;
+      }
+
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-table-wrap {
+        flex: 1 1 0 !important;
+        min-height: 0 !important;
+        max-height: none !important;
+        overflow: auto !important;
+        padding-bottom: 84px;
+        scroll-padding-bottom: 84px;
+      }
+
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .editor-box {
+        flex: 1 1 0 !important;
+        min-height: 0 !important;
+        max-height: none !important;
+      }
+    }
+
+    @media (max-width: 850px) {
+      body.desktop-mode {
+        min-height: 100dvh;
+        padding-bottom: 56px !important;
+      }
+
+      body.desktop-mode .desktop-layer,
+      body.desktop-mode .desktop-icon-grid,
+      body.desktop-mode .desktop-icon,
+      body.desktop-mode .desktop-taskbar,
+      body.desktop-mode .desktop-taskbar * {
+        pointer-events: auto !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -3365,6 +3443,9 @@ INDEX_HTML = r"""<!doctype html>
         setRootVar('--console-height', nextHeight + 'px');
         localStorage.setItem(STORE_CONSOLE_HEIGHT, String(nextHeight));
         localStorage.setItem(STORE_CONSOLE_SIZE, 'normal');
+        if (consoleCollapse) consoleCollapse.textContent = 'Einklappen';
+        if (consoleMaximize) consoleMaximize.textContent = 'Max';
+        if (consoleMinimize) consoleMinimize.textContent = 'Minimieren';
       };
       const onUp = () => {
         consoleResizeHandle.classList.remove('dragging');
@@ -3375,6 +3456,10 @@ INDEX_HTML = r"""<!doctype html>
       };
       consoleResizeHandle.addEventListener('pointerdown', event => {
         event.preventDefault();
+        if (!isDesktopModeActive() && (document.body.classList.contains('console-collapsed') || document.body.classList.contains('console-hidden'))) {
+          setConsoleMode('normal');
+          return;
+        }
         startY = event.clientY;
         startHeight = consoleDock ? consoleDock.getBoundingClientRect().height : 330;
         startTop = consoleDock ? consoleDock.getBoundingClientRect().top : 0;
@@ -3838,7 +3923,46 @@ INDEX_HTML = r"""<!doctype html>
       document.querySelectorAll('[data-panel]').forEach(panel => panel.classList.toggle('active', panel.dataset.panel === activeTab));
       document.body.classList.toggle('hide-hero', activeTab !== 'overview');
       if (document.body.classList.contains('console-hidden')) setConsoleMode('normal');
+      document.body.classList.remove('desktop-mode');
+      document.body.style.overflow = '';
+      document.body.style.pointerEvents = '';
+      const mainContent = document.querySelector('main.content');
+      if (mainContent) {
+        mainContent.style.position = '';
+        mainContent.style.inset = '';
+        mainContent.style.overflow = '';
+        mainContent.style.pointerEvents = '';
+      }
       updateDesktopTaskbar();
+    }
+
+
+    function forceClassicShellAfterDesktop() {
+      localStorage.setItem(STORE_DESKTOP_MODE, 'false');
+      document.body.classList.remove('desktop-mode');
+      clearDesktopStateForClassic();
+      const activeTab = document.querySelector('.tab-button.active')?.dataset.tab || 'overview';
+      activateTab(activeTab);
+      requestAnimationFrame(() => {
+        clearDesktopStateForClassic();
+        document.body.offsetHeight;
+      });
+    }
+
+    function enterDesktopModeFromUser() {
+      localStorage.setItem(STORE_UX_PROFILE, 'desktop');
+      localStorage.setItem(STORE_DESKTOP_MODE, 'true');
+      document.body.classList.remove('ux-auto', 'ux-mobile', 'ux-tablet');
+      document.body.classList.add('ux-desktop');
+      setDesktopMode(true, { adaptive: true, manual: true });
+      updateUxProfileControl('desktop', 'desktop');
+      requestAnimationFrame(() => {
+        if (!document.body.classList.contains('desktop-mode')) {
+          setDesktopMode(true, { adaptive: true, manual: true });
+        }
+        if (!document.querySelector('.tab-panel.desktop-open')) openDesktopWindow('overview');
+        updateDesktopTaskbar();
+      });
     }
 
     function setDesktopMode(enabled, options = {}) {
@@ -3869,17 +3993,16 @@ INDEX_HTML = r"""<!doctype html>
     function toggleDesktopMode() {
       if (document.body.classList.contains('desktop-mode')) {
         localStorage.setItem(STORE_UX_PROFILE, 'auto');
-        localStorage.setItem(STORE_DESKTOP_MODE, 'false');
-        setDesktopMode(false);
+        forceClassicShellAfterDesktop();
         if (uxProfileSelect) uxProfileSelect.value = 'auto';
         window.setTimeout(() => {
+          applyAdaptiveUx();
           clearDesktopStateForClassic();
           activateTab(document.querySelector('.tab-button.active')?.dataset.tab || 'overview');
         }, 0);
         return;
       }
-      localStorage.setItem(STORE_DESKTOP_MODE, 'true');
-      setUxProfile('desktop');
+      enterDesktopModeFromUser();
     }
 
     function updateDesktopClock() {
@@ -3943,9 +4066,13 @@ INDEX_HTML = r"""<!doctype html>
 
     function setUxProfile(profile) {
       const next = sanitizeUxProfile(profile);
+      if (next === 'desktop') {
+        enterDesktopModeFromUser();
+        return;
+      }
       localStorage.setItem(STORE_UX_PROFILE, next);
-      if (next === 'desktop') localStorage.setItem(STORE_DESKTOP_MODE, 'true');
       if (next === 'mobile' || next === 'tablet') localStorage.setItem(STORE_DESKTOP_MODE, 'false');
+      if (next !== 'desktop' && document.body.classList.contains('desktop-mode')) forceClassicShellAfterDesktop();
       applyAdaptiveUx();
     }
 
@@ -5142,7 +5269,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.11.2"
+    server_version = "WinoMCConsole/1.6.11.3"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")

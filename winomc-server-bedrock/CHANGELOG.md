@@ -5,6 +5,31 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.11.3
+
+#### UX / Classic Console
+
+* Bug behoben, bei dem die Live Console in der klassischen Ansicht nach dem Einklappen durch Ziehen am Resize-Griff in einen widersprüchlichen Zustand geraten konnte.
+* Der Resize-Griff ist im eingeklappten oder minimierten klassischen Zustand nun deaktiviert.
+* Beim manuellen Resize wird die Console sauber in den normalen Modus zurückgeführt und die Beschriftung der Buttons bleibt korrekt.
+
+#### UX / Dateimanager
+
+* Scrollverhalten des Dateiexplorers in der klassischen PC-Ansicht erneut stabilisiert.
+* Der Dateimanager nutzt auf großen Bildschirmen nun einen festen, viewportbasierten internen Scrollbereich oberhalb der Live Console.
+* Untere Dateien und Aktionen bleiben erreichbar, auch wenn die Live Console geöffnet ist.
+
+#### UX / Mobile & Desktop-Wechsel
+
+* Wechsel von Mobile/Tablet in den Desktop-Modus robuster gemacht.
+* Der Desktop-Modus wird bei manueller Auswahl nun direkt erzwungen und nicht mehr durch die automatische Geräteerkennung zurückgesetzt.
+* Wechsel vom Desktop-Modus zurück in die klassische Ansicht bereinigt verwaiste Desktop-Fenster, Overlays, Inline-Positionen und blockierende Zustände zuverlässiger.
+
+#### Maintenance
+
+* Version auf `WinoMCConsole/1.6.11.3` angehoben.
+* Bestehende Sicherheits- und Dateimanager-Funktionen aus 1.6.11.2 bleiben erhalten.
+
 ### 1.6.11.2
 
 #### UX / Responsive Layout
