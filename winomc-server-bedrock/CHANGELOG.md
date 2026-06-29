@@ -5,6 +5,39 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.14.1
+
+#### UX / Live Console
+
+* Vollbild-Schaltfläche der Live Console korrigiert.
+* Ein Klick auf **Vollbild** öffnet die Live Console als Vollbild-Overlay.
+* Ein erneuter Klick auf dieselbe Schaltfläche kehrt zuverlässig zur vorherigen Größe zurück.
+* Der Button zeigt im Vollbildmodus nun korrekt **Normal** an und führt die Rückkehr zur vorherigen Größe aus.
+* Die alte doppelte Behandlung der Vollbild-Schaltfläche wurde abgefangen, damit ältere Größen-Handler den Klick nicht mehr vorher verbrauchen.
+
+#### UX / PC Navigation
+
+* Eingeklappte PC-Navigation weiter bereinigt.
+* Bei kleinen PC-Browserfenstern zeigt die eingeklappte Navigation jetzt konsequent nur Icons.
+* Abgeschnittene oder halb sichtbare Menütexte in der Icon-Leiste wurden unterbunden.
+* Der Inhaltsbereich bleibt neben der eingeklappten Navigation nutzbar.
+
+#### UX / Mobile Dateimanager
+
+* Mobile Dateimanager-Ansicht kompakter gestaltet.
+* Sekundäre Dateimanager-Werkzeuge werden auf Mobile hinter einer neuen Schaltfläche **Werkzeuge anzeigen** zusammengefasst.
+* Standardmäßig sichtbar bleiben nur die wichtigsten Felder zum Navigieren im Dateisystem.
+* Datei-Inhaltsbereich erhält mehr vertikalen Platz.
+* Dateiliste nutzt den verfügbaren Platz besser aus und bleibt scrollbar.
+* Upload-Zone und Kopfbereich wurden auf Mobile reduziert, damit der Explorer nicht mehr von Bedienelementen verdrängt wird.
+
+#### Maintenance
+
+* Version auf `WinoMCConsole/1.6.14.1` angehoben.
+* Python-Syntaxprüfung mit `python3 -m py_compile` durchgeführt.
+* JavaScript-Syntaxprüfung mit `node --check` durchgeführt.
+* Repo-ZIP-Struktur geprüft.
+
 ### 1.6.14
 
 #### UX / Navigation

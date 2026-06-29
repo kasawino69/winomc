@@ -3294,6 +3294,139 @@ INDEX_HTML = r"""<!doctype html>
       }
     }
 
+
+    /* v1.6.14.1 UX refinement
+       - Console fullscreen toggle is handled before older size handlers can
+         consume the click, so Vollbild toggles back to the previous size.
+       - Collapsed PC navigation is a true icon rail, even on narrow desktop
+         browser widths.
+       - Mobile file manager hides secondary toolbar actions behind one compact
+         Werkzeuge toggle so the file list gets the main screen real estate. */
+    body.sidebar-collapsed.ux-desktop:not(.desktop-mode) nav,
+    body.sidebar-collapsed.ux-desktop.desktop-mode nav {
+      width: 78px !important;
+      min-width: 78px !important;
+      max-width: 78px !important;
+      overflow-x: hidden !important;
+    }
+    body.sidebar-collapsed.ux-desktop:not(.desktop-mode) .layout,
+    body.sidebar-collapsed.ux-desktop.desktop-mode .layout {
+      grid-template-columns: 92px minmax(0, 1fr) !important;
+      max-width: 100% !important;
+    }
+    body.sidebar-collapsed.ux-desktop:not(.desktop-mode) .tab-button,
+    body.sidebar-collapsed.ux-desktop:not(.desktop-mode) .sidebar-toggle,
+    body.sidebar-collapsed.ux-desktop.desktop-mode .tab-button,
+    body.sidebar-collapsed.ux-desktop.desktop-mode .sidebar-toggle {
+      font-size: 0 !important;
+      line-height: 0 !important;
+      color: transparent !important;
+      text-indent: 0 !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+    }
+    body.sidebar-collapsed.ux-desktop:not(.desktop-mode) .tab-button .icon,
+    body.sidebar-collapsed.ux-desktop.desktop-mode .tab-button .icon,
+    body.sidebar-collapsed.ux-desktop:not(.desktop-mode) .sidebar-toggle span:first-child,
+    body.sidebar-collapsed.ux-desktop.desktop-mode .sidebar-toggle span:first-child {
+      color: var(--text) !important;
+      font-size: 22px !important;
+      line-height: 1 !important;
+      display: inline-grid !important;
+      place-items: center !important;
+      text-indent: 0 !important;
+    }
+    body.sidebar-collapsed.ux-desktop:not(.desktop-mode) .tab-button.active .icon,
+    body.sidebar-collapsed.ux-desktop.desktop-mode .tab-button.active .icon {
+      color: #dcfce7 !important;
+    }
+    body.sidebar-collapsed.ux-desktop:not(.desktop-mode) .toggle-label,
+    body.sidebar-collapsed.ux-desktop.desktop-mode .toggle-label {
+      display: none !important;
+    }
+
+    .mobile-file-tools-toggle {
+      display: none;
+    }
+
+    @media (max-width: 720px) {
+      body.ux-mobile:not(.desktop-mode) .tab-panel[data-panel="files"] > .card[data-card-id="files-toolbar"] {
+        padding: 10px !important;
+        display: grid !important;
+        gap: 8px !important;
+      }
+      body.ux-mobile:not(.desktop-mode) .tab-panel[data-panel="files"] > .card[data-card-id="files-toolbar"] .card-header {
+        gap: 8px !important;
+        margin-bottom: 0 !important;
+      }
+      body.ux-mobile:not(.desktop-mode) .tab-panel[data-panel="files"] > .card[data-card-id="files-toolbar"] .card-header p {
+        display: none !important;
+      }
+      body.ux-mobile:not(.desktop-mode) .file-toolbar {
+        display: grid !important;
+        grid-template-columns: 1fr !important;
+        gap: 7px !important;
+        margin-top: 0 !important;
+      }
+      body.ux-mobile:not(.desktop-mode) .file-toolbar label.status,
+      body.ux-mobile:not(.desktop-mode) .file-toolbar input,
+      body.ux-mobile:not(.desktop-mode) .file-toolbar select,
+      body.ux-mobile:not(.desktop-mode) .file-toolbar button {
+        min-height: 38px !important;
+        padding-block: 8px !important;
+      }
+      body.ux-mobile:not(.desktop-mode) .mobile-file-tools-toggle {
+        display: inline-flex !important;
+        width: 100% !important;
+        justify-content: center !important;
+      }
+      body.ux-mobile:not(.desktop-mode) .file-toolbar .mobile-secondary-tool,
+      body.ux-mobile:not(.desktop-mode) .file-toolbar .trash-retention-control,
+      body.ux-mobile:not(.desktop-mode) .file-toolbar .toolbar-break {
+        display: none !important;
+      }
+      body.ux-mobile:not(.desktop-mode).mobile-file-tools-open .file-toolbar .mobile-secondary-tool,
+      body.ux-mobile:not(.desktop-mode).mobile-file-tools-open .file-toolbar .trash-retention-control {
+        display: flex !important;
+      }
+      body.ux-mobile:not(.desktop-mode).mobile-file-tools-open .file-toolbar button.mobile-secondary-tool {
+        display: inline-flex !important;
+        justify-content: center !important;
+      }
+      body.ux-mobile:not(.desktop-mode) #fileCurrentPath {
+        padding: 7px 9px !important;
+        font-size: 12px !important;
+      }
+      body.ux-mobile:not(.desktop-mode) #fileBreadcrumb {
+        display: none !important;
+      }
+      body.ux-mobile:not(.desktop-mode) .file-explorer-panel {
+        padding: 10px !important;
+      }
+      body.ux-mobile:not(.desktop-mode) .file-explorer-panel .card-header {
+        margin-bottom: 6px !important;
+      }
+      body.ux-mobile:not(.desktop-mode) .file-explorer-panel .card-header p,
+      body.ux-mobile:not(.desktop-mode) .file-explorer-panel .card-header .actions {
+        display: none !important;
+      }
+      body.ux-mobile:not(.desktop-mode) .drop-zone {
+        padding: 9px !important;
+        font-size: 12px !important;
+        border-radius: 10px !important;
+      }
+      body.ux-mobile:not(.desktop-mode) .file-table-wrap {
+        min-height: calc(100dvh - var(--console-height) - 260px) !important;
+        max-height: calc(100dvh - var(--console-height) - 210px) !important;
+        overflow: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+      }
+      body.ux-mobile:not(.desktop-mode).console-collapsed .file-table-wrap {
+        min-height: calc(100dvh - 250px) !important;
+        max-height: calc(100dvh - 210px) !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -5954,6 +6087,87 @@ INDEX_HTML = r"""<!doctype html>
       loadStatus().catch(() => {});
     });
 
+
+    /* v1.6.14.1 interaction cleanup */
+    const STORE_CONSOLE_BEFORE_FULLSCREEN_16141 = 'winomc.console.beforeFullscreen.1.6.14.1';
+
+    function consoleModeName16141() {
+      if (document.body.classList.contains('console-collapsed')) return 'collapsed';
+      if (document.body.classList.contains('console-hidden')) return 'hidden';
+      if (document.body.classList.contains('console-maximized')) return 'maximized';
+      if (document.body.classList.contains('console-compact')) return 'compact';
+      if (document.body.classList.contains('console-large')) return 'large';
+      return 'normal';
+    }
+
+    function updateConsoleFullscreenLabels16141() {
+      const isFull = document.body.classList.contains('console-maximized');
+      document.querySelectorAll('[data-console-size="fullscreen"]').forEach(button => {
+        button.textContent = isFull ? 'Normal' : 'Vollbild';
+        button.setAttribute('aria-pressed', isFull ? 'true' : 'false');
+        button.title = isFull ? 'Zur vorherigen Konsolengröße zurückkehren' : 'Live Console als Vollbild öffnen';
+      });
+    }
+
+    const setConsoleMode_16141 = setConsoleMode;
+    setConsoleMode = function(mode) {
+      setConsoleMode_16141(mode || 'normal');
+      updateConsoleFullscreenLabels16141();
+    };
+
+    function toggleConsoleFullscreen16141() {
+      if (document.body.classList.contains('console-maximized')) {
+        const previous = localStorage.getItem(STORE_CONSOLE_BEFORE_FULLSCREEN_16141) || 'normal';
+        setConsoleMode(previous === 'maximized' || previous === 'fullscreen' ? 'normal' : previous);
+      } else {
+        const current = consoleModeName16141();
+        localStorage.setItem(STORE_CONSOLE_BEFORE_FULLSCREEN_16141, current === 'maximized' ? 'normal' : current);
+        setConsoleMode('maximized');
+      }
+    }
+
+    document.querySelectorAll('[data-console-size="fullscreen"]').forEach(button => {
+      button.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        toggleConsoleFullscreen16141();
+      }, true);
+    });
+    updateConsoleFullscreenLabels16141();
+
+    function setupMobileFileTools16141() {
+      const toolbar = document.querySelector('.file-toolbar');
+      if (!toolbar || document.getElementById('mobileFileToolsToggle')) return;
+      const secondaryIds = new Set([
+        'fileRefresh', 'fileOpenTrash', 'fileWriteLockToggle', 'trashRetentionWrap',
+        'fileParent', 'fileZipCurrent', 'fileZipExportCurrent', 'safeWorldExport'
+      ]);
+      Array.from(toolbar.children).forEach(child => {
+        if (child.id && secondaryIds.has(child.id)) child.classList.add('mobile-secondary-tool');
+      });
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.id = 'mobileFileToolsToggle';
+      toggle.className = 'soft mobile-file-tools-toggle';
+      toggle.textContent = 'Werkzeuge anzeigen';
+      toggle.addEventListener('click', () => {
+        document.body.classList.toggle('mobile-file-tools-open');
+        toggle.textContent = document.body.classList.contains('mobile-file-tools-open') ? 'Werkzeuge ausblenden' : 'Werkzeuge anzeigen';
+      });
+      const openPathButton = document.getElementById('fileOpenPath');
+      if (openPathButton && openPathButton.parentNode === toolbar) {
+        openPathButton.insertAdjacentElement('afterend', toggle);
+      } else {
+        toolbar.insertBefore(toggle, toolbar.firstChild);
+      }
+    }
+
+    setupMobileFileTools16141();
+
+    window.addEventListener('resize', () => {
+      if (!document.body.classList.contains('ux-mobile')) document.body.classList.remove('mobile-file-tools-open');
+    }, { passive: true });
+
 </script>
 </body>
 </html>
@@ -7209,7 +7423,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.14"
+    server_version = "WinoMCConsole/1.6.14.1"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")
