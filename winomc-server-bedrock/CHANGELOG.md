@@ -5,6 +5,15 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.14.9
+* PC-Desktop-Freifläche wird wieder bis zur Taskleiste korrekt als Desktop-Fläche behandelt
+der dunkle Blocker-Bereich unterhalb des Desktops wird beseitigt
+* Live Console wird nicht mehr beim Bewegen in der Größe verändert
+* Live Console wird nicht mehr künstlich unten rechts eingesnappt
+* Größenänderung der Live Console bleibt wieder möglich
+* klassische Ansicht und Mobile wurden nicht funktional angefasst
+* Version gesetzt auf WinoMCConsole/1.6.14.9
+
 ### 1.6.14.8
 
 WinoMC Console Fehlerbehebungen
