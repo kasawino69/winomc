@@ -4010,6 +4010,94 @@ INDEX_HTML = r"""<!doctype html>
       padding-top: 10px;
     }
 
+
+
+    /* v1.6.14.11 classic PC console + file layout hardening
+       Surgical scope: PC classic shell only. Restore the explicit drag resize
+       handle, but stop console height changes from recalculating the navigation
+       and file-manager work area. The bottom console may overlay dashboard/file
+       content; the file list keeps an internal scroll area with bottom padding
+       so rows remain reachable above the console. Mobile and PC Workbench keep
+       their existing behavior. */
+    body.ux-desktop:not(.desktop-mode) {
+      --classic-pc-workspace-reserve: 330px;
+    }
+
+    body.ux-desktop:not(.desktop-mode).console-collapsed {
+      --classic-pc-workspace-reserve: 76px;
+    }
+
+    body.ux-desktop:not(.desktop-mode).console-hidden {
+      --classic-pc-workspace-reserve: 46px;
+    }
+
+    body.ux-desktop:not(.desktop-mode) .console-resize-handle {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      pointer-events: auto !important;
+      height: 12px !important;
+      touch-action: none !important;
+    }
+
+    body.ux-desktop:not(.desktop-mode).console-collapsed .console-resize-handle,
+    body.ux-desktop:not(.desktop-mode).console-hidden .console-resize-handle,
+    body.ux-desktop:not(.desktop-mode).console-maximized .console-resize-handle {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      height: 0 !important;
+    }
+
+    body.ux-desktop:not(.desktop-mode) nav {
+      height: calc(100dvh - var(--classic-pc-workspace-reserve) - 92px) !important;
+      max-height: calc(100dvh - var(--classic-pc-workspace-reserve) - 92px) !important;
+      min-height: min(320px, calc(100dvh - var(--classic-pc-workspace-reserve) - 92px)) !important;
+      overflow: auto !important;
+    }
+
+    body.ux-desktop:not(.desktop-mode) .tab-panel[data-panel="files"].active {
+      height: calc(100dvh - var(--classic-pc-workspace-reserve) - 84px) !important;
+      min-height: min(560px, calc(100dvh - var(--classic-pc-workspace-reserve) - 84px)) !important;
+      max-height: none !important;
+      display: grid !important;
+      grid-template-rows: auto minmax(0, 1fr) !important;
+      overflow: hidden !important;
+    }
+
+    body.ux-desktop:not(.desktop-mode) .tab-panel[data-panel="files"] .file-manager-grid {
+      min-height: 0 !important;
+      height: 100% !important;
+      max-height: none !important;
+      overflow: hidden !important;
+    }
+
+    body.ux-desktop:not(.desktop-mode) .tab-panel[data-panel="files"] .file-explorer-panel {
+      min-height: 0 !important;
+      height: 100% !important;
+      max-height: none !important;
+      display: grid !important;
+      grid-template-rows: auto auto minmax(0, 1fr) !important;
+      overflow: hidden !important;
+    }
+
+    body.ux-desktop:not(.desktop-mode) .tab-panel[data-panel="files"] .file-table-wrap {
+      min-height: 300px !important;
+      height: 100% !important;
+      max-height: none !important;
+      overflow: auto !important;
+      padding-bottom: calc(min(var(--console-height), 440px) + 24px) !important;
+      scroll-padding-bottom: calc(min(var(--console-height), 440px) + 24px) !important;
+      overscroll-behavior: contain !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+
+    body.ux-desktop:not(.desktop-mode) .tab-panel[data-panel="files"] .editor-panel.editor-open,
+    body.ux-desktop:not(.desktop-mode) .tab-panel[data-panel="files"] .editor-panel.editor-fullscreen {
+      inset-bottom: calc(var(--classic-pc-workspace-reserve) + 18px) !important;
+    }
+
 </style>
 </head>
 <body>
@@ -7341,6 +7429,77 @@ INDEX_HTML = r"""<!doctype html>
       requestAnimationFrame(syncClassicPcConsoleLabels);
     })();
 
+
+
+    /* v1.6.14.11 classic PC console runtime guard
+       Keep the restored drag handle usable in classic PC view and resync the
+       file-manager viewport after console size changes without touching mobile
+       or PC Workbench. */
+    (function hardenClassicPcConsole161411() {
+      function isClassicPcShell161411() {
+        return document.body.classList.contains('ux-desktop') && !document.body.classList.contains('desktop-mode');
+      }
+
+      function modeName161411() {
+        if (document.body.classList.contains('console-collapsed')) return 'collapsed';
+        if (document.body.classList.contains('console-hidden')) return 'hidden';
+        if (document.body.classList.contains('console-maximized')) return 'maximized';
+        if (document.body.classList.contains('console-compact')) return 'compact';
+        if (document.body.classList.contains('console-large')) return 'large';
+        return 'normal';
+      }
+
+      function syncClassicPcConsole161411() {
+        if (!isClassicPcShell161411()) return;
+        if (consoleResizeHandle) {
+          const blocked = document.body.classList.contains('console-collapsed') ||
+            document.body.classList.contains('console-hidden') ||
+            document.body.classList.contains('console-maximized');
+          consoleResizeHandle.hidden = blocked;
+          consoleResizeHandle.setAttribute('aria-hidden', blocked ? 'true' : 'false');
+          if (!blocked) {
+            consoleResizeHandle.style.removeProperty('display');
+            consoleResizeHandle.style.removeProperty('pointer-events');
+            consoleResizeHandle.style.removeProperty('visibility');
+            consoleResizeHandle.style.removeProperty('height');
+          }
+        }
+
+        const mode = modeName161411();
+        document.querySelectorAll('[data-console-size="compact"]').forEach(button => {
+          button.setAttribute('aria-pressed', mode === 'compact' ? 'true' : 'false');
+        });
+        document.querySelectorAll('[data-console-size="normal"]').forEach(button => {
+          button.setAttribute('aria-pressed', mode === 'normal' ? 'true' : 'false');
+        });
+        document.querySelectorAll('[data-console-size="large"]').forEach(button => {
+          button.textContent = 'Groß';
+          button.setAttribute('aria-pressed', mode === 'large' ? 'true' : 'false');
+        });
+        document.querySelectorAll('[data-console-size="fullscreen"]').forEach(button => {
+          button.textContent = mode === 'maximized' ? 'Normal' : 'Vollbild';
+          button.setAttribute('aria-pressed', mode === 'maximized' ? 'true' : 'false');
+        });
+        if (consoleCollapse) consoleCollapse.textContent = (mode === 'collapsed' || mode === 'hidden') ? 'Ausklappen' : 'Einklappen';
+      }
+
+      const previousSetConsoleMode161411 = setConsoleMode;
+      setConsoleMode = function(mode) {
+        previousSetConsoleMode161411(mode || 'normal');
+        window.requestAnimationFrame(syncClassicPcConsole161411);
+      };
+
+      const previousApplyConsoleSize161411 = applyConsoleSize;
+      applyConsoleSize = function(size) {
+        previousApplyConsoleSize161411(size || 'normal');
+        window.requestAnimationFrame(syncClassicPcConsole161411);
+      };
+
+      window.addEventListener('resize', () => window.requestAnimationFrame(syncClassicPcConsole161411), { passive: true });
+      window.requestAnimationFrame(syncClassicPcConsole161411);
+      window.setTimeout(syncClassicPcConsole161411, 250);
+    })();
+
 </script>
 </body>
 </html>
@@ -8596,7 +8755,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.14.10"
+    server_version = "WinoMCConsole/1.6.14.11"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")

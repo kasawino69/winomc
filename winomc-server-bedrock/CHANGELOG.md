@@ -5,6 +5,16 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.14.11
+
+* der Größenänderungsgriff der Live Console ist in der klassischen PC-Ansicht wieder vorhanden
+der Griff ist nur in sinnvoll nutzbaren Zuständen aktiv, nicht bei eingeklappt/versteckt/Vollbild
+* Größenänderungen der Live Console verändern nicht mehr ständig die Layout-Höhe von Navigation und Dateimanager
+der Dateimanager/Explorer bekommt wieder eine größere nutzbare Inhaltsfläche
+die Dateiliste bleibt intern scrollbar
+* Desktop-Workbench, Mobile, Serverlogik, Datei-API und Dashboard-Funktionen wurden nicht funktional umgebaut
+* Version gesetzt auf WinoMCConsole/1.6.14.11
+
 ### 1.6.14.10
 
 * klassische PC-Ansicht: der freie Drag-Größenregler der Live Console wird ausgeblendet
