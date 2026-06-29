@@ -2745,150 +2745,407 @@ def runtime_fifo_path():
         raise RuntimeError("Unsicherer FIFO-Pfad blockiert: %s" % exc)
 
 
-def ensure_parent_dir(path):
-    parent = canonical_path(os.path.dirname(path))
-    os.makedirs(parent, exist_ok=True)
-    return parent
+def ensure_runtime_parent_dir(path):
+    candidate_abs = os.path.abspath(str(path or ""))
+    candidate_real = os.path.normpath(os.path.realpath(candidate_abs))
+    allowed = False
+    for base_path in allowed_runtime_bases():
+        base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+        if candidate_real == base_path or candidate_real.startswith(base_prefix):
+            allowed = True
+            break
+    if not allowed:
+        raise ValueError("Runtime-Pfad außerhalb der erlaubten Bereiche blockiert.")
+    parent = os.path.normpath(os.path.realpath(os.path.dirname(candidate_real)))
+    for base_path in allowed_runtime_bases():
+        base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+        if parent == base_path or parent.startswith(base_prefix):
+            os.makedirs(parent, exist_ok=True)
+            return parent
+    raise ValueError("Runtime-Elternpfad außerhalb der erlaubten Bereiche blockiert.")
 
 
 def safe_open_opener(path, flags):
     return os.open(path, flags | getattr(os, "O_NOFOLLOW", 0), 0o666)
 
 
-def open_checked(path, mode, *args, **kwargs):
+def open_runtime(candidate_path, mode, *args, **kwargs):
+    write_mode = any(flag in str(mode) for flag in ("w", "a", "x", "+"))
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    allowed = False
+    matched_base = None
+    for base_path in allowed_runtime_bases():
+        base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+        if safe_path == base_path or safe_path.startswith(base_prefix):
+            allowed = True
+            matched_base = base_path
+            break
+    if not allowed:
+        raise ValueError("Runtime-Pfad außerhalb der erlaubten Bereiche blockiert.")
+    assert_no_symlink_component(matched_base, candidate_abs, allow_missing=write_mode)
+    if not write_mode and not os.path.exists(safe_path):
+        raise FileNotFoundError("Runtime-Pfad existiert nicht.")
+    if write_mode:
+        parent = os.path.normpath(os.path.realpath(os.path.dirname(safe_path)))
+        base_prefix = matched_base if matched_base.endswith(os.sep) else matched_base + os.sep
+        if parent != matched_base and not parent.startswith(base_prefix):
+            raise ValueError("Runtime-Elternpfad außerhalb der erlaubten Bereiche blockiert.")
+        if not os.path.isdir(parent):
+            raise FileNotFoundError("Runtime-Zielordner existiert nicht.")
+        if os.path.lexists(safe_path) and os.path.islink(safe_path):
+            raise ValueError("Schreiben auf symbolische Links ist blockiert.")
     if "opener" not in kwargs:
         kwargs["opener"] = safe_open_opener
-    return open(path, mode, *args, **kwargs)
+    return open(safe_path, mode, *args, **kwargs)
 
 
 def open_safe(root_key, candidate_path, mode, *args, **kwargs):
     write_mode = any(flag in str(mode) for flag in ("w", "a", "x", "+"))
-    safe_path = assert_safe_path(root_key, candidate_path, require_exists=not write_mode)
+    base_path = allowed_root_base(root_key)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=write_mode)
+    if not write_mode and not os.path.exists(safe_path):
+        raise FileNotFoundError("Pfad existiert nicht.")
     if write_mode:
-        parent = assert_safe_path(root_key, os.path.dirname(safe_path), require_exists=True)
+        parent = os.path.normpath(os.path.realpath(os.path.dirname(safe_path)))
+        if parent != base_path and not parent.startswith(base_prefix):
+            raise ValueError("Zielordner außerhalb des erlaubten Bereichs blockiert.")
         if not os.path.isdir(parent):
             raise FileNotFoundError("Zielordner existiert nicht.")
         if os.path.lexists(safe_path) and os.path.islink(safe_path):
             raise ValueError("Schreiben auf symbolische Links ist blockiert.")
-    return open_checked(safe_path, mode, *args, **kwargs)
+    if "opener" not in kwargs:
+        kwargs["opener"] = safe_open_opener
+    return open(safe_path, mode, *args, **kwargs)
 
 
 def open_safe_internal(base_dir, candidate_path, mode, *args, **kwargs):
     write_mode = any(flag in str(mode) for flag in ("w", "a", "x", "+"))
-    safe_path = assert_safe_internal_path(base_dir, candidate_path, require_exists=not write_mode)
+    base_path = canonical_path(base_dir)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Interner Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=write_mode)
+    if not write_mode and not os.path.exists(safe_path):
+        raise FileNotFoundError("Interner Pfad existiert nicht.")
     if write_mode:
-        parent = assert_safe_internal_path(base_dir, os.path.dirname(safe_path), require_exists=True)
+        parent = os.path.normpath(os.path.realpath(os.path.dirname(safe_path)))
+        if parent != base_path and not parent.startswith(base_prefix):
+            raise ValueError("Interner Zielordner außerhalb des erlaubten Bereichs blockiert.")
         if not os.path.isdir(parent):
             raise FileNotFoundError("Interner Zielordner existiert nicht.")
         if os.path.lexists(safe_path) and os.path.islink(safe_path):
             raise ValueError("Schreiben auf symbolische Links ist blockiert.")
-    return open_checked(safe_path, mode, *args, **kwargs)
+    if "opener" not in kwargs:
+        kwargs["opener"] = safe_open_opener
+    return open(safe_path, mode, *args, **kwargs)
+
+
+def path_exists_internal(base_dir, candidate_path):
+    base_path = canonical_path(base_dir)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Interner Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=True)
+    return os.path.exists(safe_path)
+
+
+def listdir_internal(base_dir, candidate_path):
+    base_path = canonical_path(base_dir)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Interner Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=False)
+    if not os.path.isdir(safe_path):
+        raise FileNotFoundError("Interner Ordner existiert nicht.")
+    return os.listdir(safe_path)
+
+
+def getmtime_internal(base_dir, candidate_path):
+    base_path = canonical_path(base_dir)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Interner Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=False)
+    if not os.path.exists(safe_path):
+        raise FileNotFoundError("Interner Pfad existiert nicht.")
+    return os.path.getmtime(safe_path)
+
+
+def replace_internal(base_dir, source_path, target_path):
+    base_path = canonical_path(base_dir)
+    source_abs = os.path.abspath(str(source_path or ""))
+    safe_source = os.path.normpath(os.path.realpath(source_abs))
+    target_abs = os.path.abspath(str(target_path or ""))
+    safe_target = os.path.normpath(os.path.realpath(target_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_source != base_path and not safe_source.startswith(base_prefix):
+        raise ValueError("Interner Quellpfad außerhalb des erlaubten Bereichs blockiert.")
+    if safe_target != base_path and not safe_target.startswith(base_prefix):
+        raise ValueError("Interner Zielpfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, source_abs, allow_missing=False)
+    assert_no_symlink_component(base_path, target_abs, allow_missing=True)
+    os.replace(safe_source, safe_target)
 
 
 def path_exists_root(root_key, candidate_path):
-    safe_path = assert_safe_path(root_key, candidate_path)
+    base_path = allowed_root_base(root_key)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=True)
     return os.path.exists(safe_path)
 
 
 def path_is_file_root(root_key, candidate_path):
-    safe_path = assert_safe_path(root_key, candidate_path)
+    base_path = allowed_root_base(root_key)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=True)
     return os.path.isfile(safe_path)
 
 
 def path_is_dir_root(root_key, candidate_path):
-    safe_path = assert_safe_path(root_key, candidate_path)
+    base_path = allowed_root_base(root_key)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=True)
     return os.path.isdir(safe_path)
 
 
 def path_is_link_root(root_key, candidate_path):
-    safe_path = assert_safe_path(root_key, candidate_path)
-    return os.path.islink(safe_path)
+    base_path = allowed_root_base(root_key)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    # Deliberately check the non-resolved path here: lstat/islink must see the link itself.
+    if candidate_abs != base_path and not os.path.normpath(candidate_abs).startswith(base_prefix):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    return os.path.islink(candidate_abs)
 
 
 def stat_root(root_key, candidate_path):
-    safe_path = assert_safe_path(root_key, candidate_path, require_exists=True)
+    base_path = allowed_root_base(root_key)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=False)
+    if not os.path.exists(safe_path):
+        raise FileNotFoundError("Pfad existiert nicht.")
     return os.stat(safe_path)
 
 
 def getsize_root(root_key, candidate_path):
-    safe_path = assert_safe_path(root_key, candidate_path, require_exists=True)
+    base_path = allowed_root_base(root_key)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=False)
+    if not os.path.exists(safe_path):
+        raise FileNotFoundError("Pfad existiert nicht.")
     return os.path.getsize(safe_path)
 
 
 def listdir_root(root_key, candidate_path):
-    safe_path = assert_safe_path(root_key, candidate_path, require_exists=True)
+    base_path = allowed_root_base(root_key)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=False)
+    if not os.path.exists(safe_path):
+        raise FileNotFoundError("Pfad existiert nicht.")
+    if not os.path.isdir(safe_path):
+        raise ValueError("Pfad ist kein Ordner.")
     return os.listdir(safe_path)
 
 
 def makedirs_root(root_key, candidate_path, exist_ok=True):
-    safe_path = assert_safe_path(root_key, candidate_path)
+    base_path = allowed_root_base(root_key)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=True)
     os.makedirs(safe_path, exist_ok=exist_ok)
     return assert_safe_path(root_key, safe_path, require_exists=True)
 
 
 def makedirs_internal(base_dir, candidate_path, exist_ok=True):
-    safe_path = assert_safe_internal_path(base_dir, candidate_path)
+    base_path = canonical_path(base_dir)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Interner Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=True)
     os.makedirs(safe_path, exist_ok=exist_ok)
-    return assert_safe_internal_path(base_dir, safe_path, require_exists=True)
+    return assert_safe_internal_path(base_path, safe_path, require_exists=True)
 
 
 def mkstemp_root(root_key, parent_path, prefix, suffix=""):
-    parent = assert_safe_path(root_key, parent_path, require_exists=True)
-    if not os.path.isdir(parent):
+    base_path = allowed_root_base(root_key)
+    parent_abs = os.path.abspath(str(parent_path or ""))
+    parent = os.path.normpath(os.path.realpath(parent_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if parent != base_path and not parent.startswith(base_prefix):
+        raise ValueError("Zielordner außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, parent_abs, allow_missing=False)
+    if not path_is_dir_root(root_key, parent):
         raise FileNotFoundError("Zielordner existiert nicht.")
-    fd, temp_path = tempfile.mkstemp(prefix=prefix, suffix=suffix, dir=parent)
+    fd, temp_path = tempfile.mkstemp(prefix=safe_download_name(prefix, ".winomc-"), suffix=safe_download_name(suffix, "") if suffix else "", dir=parent)
     return fd, assert_safe_path(root_key, temp_path, require_exists=True)
 
 
 def mkstemp_internal(base_dir, parent_path, prefix, suffix=""):
-    parent = assert_safe_internal_path(base_dir, parent_path, require_exists=True)
+    base_path = canonical_path(base_dir)
+    parent_abs = os.path.abspath(str(parent_path or ""))
+    parent = os.path.normpath(os.path.realpath(parent_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if parent != base_path and not parent.startswith(base_prefix):
+        raise ValueError("Interner Zielordner außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, parent_abs, allow_missing=False)
     if not os.path.isdir(parent):
         raise FileNotFoundError("Interner Zielordner existiert nicht.")
-    fd, temp_path = tempfile.mkstemp(prefix=prefix, suffix=suffix, dir=parent)
-    return fd, assert_safe_internal_path(base_dir, temp_path, require_exists=True)
+    fd, temp_path = tempfile.mkstemp(prefix=safe_download_name(prefix, ".winomc-"), suffix=safe_download_name(suffix, "") if suffix else "", dir=parent)
+    return fd, assert_safe_internal_path(base_path, temp_path, require_exists=True)
 
 
 def replace_safe(root_key, source_path, target_path):
-    safe_source = assert_safe_path(root_key, source_path, require_exists=True)
-    safe_target = assert_safe_path(root_key, target_path)
-    assert_safe_path(root_key, os.path.dirname(safe_target), require_exists=True)
+    base_path = allowed_root_base(root_key)
+    source_abs = os.path.abspath(str(source_path or ""))
+    safe_source = os.path.normpath(os.path.realpath(source_abs))
+    target_abs = os.path.abspath(str(target_path or ""))
+    safe_target = os.path.normpath(os.path.realpath(target_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_source != base_path and not safe_source.startswith(base_prefix):
+        raise ValueError("Quellpfad außerhalb des erlaubten Bereichs blockiert.")
+    if safe_target != base_path and not safe_target.startswith(base_prefix):
+        raise ValueError("Zielpfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, source_abs, allow_missing=False)
+    assert_no_symlink_component(base_path, target_abs, allow_missing=True)
+    parent = os.path.normpath(os.path.realpath(os.path.dirname(safe_target)))
+    if parent != base_path and not parent.startswith(base_prefix):
+        raise ValueError("Zielordner außerhalb des erlaubten Bereichs blockiert.")
+    if not path_is_dir_root(root_key, parent):
+        raise FileNotFoundError("Zielordner existiert nicht.")
     if os.path.lexists(safe_target) and os.path.islink(safe_target):
         raise ValueError("Ersetzen eines symbolischen Links ist blockiert.")
     os.replace(safe_source, safe_target)
 
 
 def remove_safe(root_key, candidate_path):
-    safe_path = assert_safe_path(root_key, candidate_path, require_exists=True)
-    if os.path.isdir(safe_path) and not os.path.islink(safe_path):
+    base_path = allowed_root_base(root_key)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=False)
+    if os.path.isdir(safe_path) and not os.path.islink(candidate_abs):
         shutil.rmtree(safe_path)
     else:
         os.remove(safe_path)
 
 
 def remove_safe_internal(base_dir, candidate_path):
-    safe_path = assert_safe_internal_path(base_dir, candidate_path, require_exists=True)
-    if os.path.isdir(safe_path) and not os.path.islink(safe_path):
+    base_path = canonical_path(base_dir)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_path != base_path and not safe_path.startswith(base_prefix):
+        raise ValueError("Interner Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=False)
+    if os.path.isdir(safe_path) and not os.path.islink(candidate_abs):
         shutil.rmtree(safe_path)
     else:
         os.remove(safe_path)
 
 
 def copy2_safe(root_key, source_path, target_path):
-    safe_source = assert_safe_path(root_key, source_path, require_exists=True)
-    safe_target = assert_safe_internal_path(os.path.dirname(target_path), target_path)
+    base_path = allowed_root_base(root_key)
+    source_abs = os.path.abspath(str(source_path or ""))
+    safe_source = os.path.normpath(os.path.realpath(source_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_source != base_path and not safe_source.startswith(base_prefix):
+        raise ValueError("Quellpfad außerhalb des erlaubten Bereichs blockiert.")
+    target_base = canonical_path(os.path.dirname(target_path))
+    target_abs = os.path.abspath(str(target_path or ""))
+    safe_target = os.path.normpath(os.path.realpath(target_abs))
+    target_prefix = target_base if target_base.endswith(os.sep) else target_base + os.sep
+    if safe_target != target_base and not safe_target.startswith(target_prefix):
+        raise ValueError("Interner Zielpfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, source_abs, allow_missing=False)
     shutil.copy2(safe_source, safe_target)
 
 
 def move_safe_root_to_internal(root_key, source_path, internal_base, target_path):
-    safe_source = assert_safe_path(root_key, source_path, require_exists=True)
-    safe_target = assert_safe_internal_path(internal_base, target_path)
+    base_path = allowed_root_base(root_key)
+    source_abs = os.path.abspath(str(source_path or ""))
+    safe_source = os.path.normpath(os.path.realpath(source_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_source != base_path and not safe_source.startswith(base_prefix):
+        raise ValueError("Quellpfad außerhalb des erlaubten Bereichs blockiert.")
+    internal_base = canonical_path(internal_base)
+    target_abs = os.path.abspath(str(target_path or ""))
+    safe_target = os.path.normpath(os.path.realpath(target_abs))
+    internal_prefix = internal_base if internal_base.endswith(os.sep) else internal_base + os.sep
+    if safe_target != internal_base and not safe_target.startswith(internal_prefix):
+        raise ValueError("Interner Zielpfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, source_abs, allow_missing=False)
+    assert_no_symlink_component(internal_base, target_abs, allow_missing=True)
     return shutil.move(safe_source, safe_target)
 
 
 def move_safe_internal_to_root(internal_base, source_path, root_key, target_path):
-    safe_source = assert_safe_internal_path(internal_base, source_path, require_exists=True)
-    safe_target = assert_safe_path(root_key, target_path)
-    assert_safe_path(root_key, os.path.dirname(safe_target), require_exists=True)
+    internal_base = canonical_path(internal_base)
+    source_abs = os.path.abspath(str(source_path or ""))
+    safe_source = os.path.normpath(os.path.realpath(source_abs))
+    internal_prefix = internal_base if internal_base.endswith(os.sep) else internal_base + os.sep
+    if safe_source != internal_base and not safe_source.startswith(internal_prefix):
+        raise ValueError("Interner Quellpfad außerhalb des erlaubten Bereichs blockiert.")
+    base_path = allowed_root_base(root_key)
+    target_abs = os.path.abspath(str(target_path or ""))
+    safe_target = os.path.normpath(os.path.realpath(target_abs))
+    base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+    if safe_target != base_path and not safe_target.startswith(base_prefix):
+        raise ValueError("Zielpfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(internal_base, source_abs, allow_missing=False)
+    assert_no_symlink_component(base_path, target_abs, allow_missing=True)
+    parent = os.path.normpath(os.path.realpath(os.path.dirname(safe_target)))
+    if parent != base_path and not parent.startswith(base_prefix):
+        raise ValueError("Zielordner außerhalb des erlaubten Bereichs blockiert.")
+    if not path_is_dir_root(root_key, parent):
+        raise FileNotFoundError("Zielordner existiert nicht.")
     return shutil.move(safe_source, safe_target)
 
 
@@ -2906,8 +3163,20 @@ def assert_safe_download_path(candidate_path):
 
 
 def open_safe_download(candidate_path, mode="rb"):
-    safe_path = assert_safe_download_path(candidate_path)
-    return open_checked(safe_path, mode)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    matched_base = None
+    for base_path in [allowed_root_base(key) for key in FILE_ROOTS] + [canonical_path(tempfile.gettempdir())]:
+        base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+        if safe_path == base_path or safe_path.startswith(base_prefix):
+            matched_base = base_path
+            break
+    if matched_base is None:
+        raise ValueError("Download-Pfad außerhalb der erlaubten Bereiche blockiert.")
+    assert_no_symlink_component(matched_base, candidate_abs, allow_missing=False)
+    if not os.path.isfile(safe_path):
+        raise FileNotFoundError("Datei nicht gefunden.")
+    return open(safe_path, mode, opener=safe_open_opener)
 
 
 def ensure_directories():
@@ -2928,7 +3197,7 @@ def read_recent_lines(path, limit):
     lines = deque(maxlen=max(1, limit))
     try:
         safe_path = assert_runtime_path(path, require_exists=True)
-        with open_checked(safe_path, "r", encoding="utf-8", errors="replace") as handle:
+        with open_runtime(safe_path, "r", encoding="utf-8", errors="replace") as handle:
             for line in handle:
                 lines.append(line.rstrip("\n"))
     except FileNotFoundError:
@@ -2953,29 +3222,38 @@ def sanitize_command(command):
 
 def write_command(command):
     fifo_path = runtime_fifo_path()
-    if not os.path.exists(fifo_path):
+    if not runtime_path_exists(fifo_path):
         raise RuntimeError("Console FIFO existiert noch nicht. Läuft der Bedrock Server bereits?")
-    mode = os.lstat(fifo_path).st_mode
+    fifo_abs = os.path.abspath(str(fifo_path or ""))
+    safe_fifo = os.path.normpath(os.path.realpath(fifo_abs))
+    fifo_allowed = False
+    for base_path in allowed_runtime_bases():
+        base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+        if safe_fifo == base_path or safe_fifo.startswith(base_prefix):
+            fifo_allowed = True
+            break
+    if not fifo_allowed:
+        raise RuntimeError("Console FIFO ist außerhalb der erlaubten Runtime-Pfade.")
+    mode = os.lstat(safe_fifo).st_mode
     if stat.S_ISLNK(mode) or not stat.S_ISFIFO(mode):
         raise RuntimeError("Console FIFO ist kein sicherer FIFO-Pfad.")
     log_path = runtime_log_path()
-    ensure_parent_dir(log_path)
-    if not os.path.exists(log_path):
-        with open_checked(log_path, "a", encoding="utf-8"):
+    ensure_runtime_parent_dir(log_path)
+    if not runtime_path_exists(log_path):
+        with open_runtime(log_path, "a", encoding="utf-8"):
             pass
-    fd = os.open(fifo_path, os.O_WRONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0))
+    fd = os.open(safe_fifo, os.O_WRONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0))
     try:
         os.write(fd, (command + "\n").encode("utf-8"))
     finally:
         os.close(fd)
     append_console_note("> " + command)
 
-
 def append_console_note(message):
     try:
         log_path = runtime_log_path()
-        ensure_parent_dir(log_path)
-        with open_checked(log_path, "a", encoding="utf-8", errors="replace") as log_handle:
+        ensure_runtime_parent_dir(log_path)
+        with open_runtime(log_path, "a", encoding="utf-8", errors="replace") as log_handle:
             log_handle.write("[WinoMC Console] %s\n" % message)
     except Exception as exc:
         log_warning("Console-Log konnte nicht geschrieben werden: %s" % exc)
@@ -3033,9 +3311,9 @@ def make_file_backup(file_path, root_key, rel_path):
     rel_name = normalize_rel_path(rel_path).replace("/", "__")
     backup_name = safe_download_name("%s-%s-%s" % (timestamp, root_key, rel_name), "winomc-file-backup")
     backup_path = assert_safe_internal_path(backup_base, os.path.join(backup_base, backup_name))
-    if os.path.exists(assert_safe_internal_path(backup_base, backup_path)):
+    if path_exists_internal(backup_base, backup_path):
         backup_path = assert_safe_internal_path(backup_base, backup_path + ".bak")
-    shutil.copy2(assert_safe_path(root_key, file_path, require_exists=True), assert_safe_internal_path(backup_base, backup_path))
+    copy2_safe(root_key, file_path, backup_path)
     return backup_path
 
 
@@ -3112,7 +3390,7 @@ def write_text_file(root_key, rel_path, content):
     if path_is_dir_root(root_key, file_path):
         raise ValueError("Ordner können nicht als Datei gespeichert werden.")
     parent = assert_safe_path(root_key, os.path.dirname(file_path), require_exists=True)
-    if not os.path.isdir(parent):
+    if not path_is_dir_root(root_key, parent):
         raise FileNotFoundError("Zielordner existiert nicht.")
     if not is_editable_text_file(file_path):
         raise ValueError("Dieser Dateityp ist nicht für den Texteditor freigegeben.")
@@ -3174,17 +3452,31 @@ def create_zip_from_paths(root_key, rel_paths, save_to_export=False):
                 raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
             source_name = safe_download_name(os.path.basename(source_path.rstrip(os.sep)) or FILE_ROOTS[root_key]["label"], "winomc-files")
             if path_is_file_root(root_key, source_path):
-                archive.write(assert_safe_path(root_key, source_path, require_exists=True), source_name)
+                source_abs = os.path.abspath(str(source_path or ""))
+                safe_source = os.path.normpath(os.path.realpath(source_abs))
+                root_prefix = root_base if root_base.endswith(os.sep) else root_base + os.sep
+                if safe_source != root_base and not safe_source.startswith(root_prefix):
+                    raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+                assert_no_symlink_component(root_base, source_abs, allow_missing=False)
+                archive.write(safe_source, source_name)
                 continue
             parent_path = os.path.dirname(source_path.rstrip(os.sep))
-            for current_root, dirs, files in os.walk(assert_safe_path(root_key, source_path, require_exists=True), followlinks=False):
+            walk_abs = os.path.abspath(str(source_path or ""))
+            safe_walk_root = os.path.normpath(os.path.realpath(walk_abs))
+            root_prefix = root_base if root_base.endswith(os.sep) else root_base + os.sep
+            if safe_walk_root != root_base and not safe_walk_root.startswith(root_prefix):
+                raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+            assert_no_symlink_component(root_base, walk_abs, allow_missing=False)
+            for current_root, dirs, files in os.walk(safe_walk_root, followlinks=False):
                 dirs[:] = [dirname for dirname in dirs if not os.path.islink(os.path.join(current_root, dirname)) and is_inside_base(root_base, os.path.join(current_root, dirname))]
                 for filename in files:
                     file_path = os.path.join(current_root, filename)
-                    if os.path.islink(file_path) or not is_inside_base(root_base, file_path):
+                    file_abs = os.path.abspath(str(file_path or ""))
+                    safe_file_path = os.path.normpath(os.path.realpath(file_abs))
+                    if os.path.islink(file_abs) or (safe_file_path != root_base and not safe_file_path.startswith(root_prefix)):
                         continue
-                    archive_name = os.path.relpath(file_path, parent_path)
-                    archive.write(assert_safe_path(root_key, file_path, require_exists=True), archive_name)
+                    archive_name = os.path.relpath(safe_file_path, parent_path)
+                    archive.write(safe_file_path, archive_name)
     return {"zip_path": zip_path, "zip_name": zip_name, "cleanup": cleanup, "saved_to_export": save_to_export, "export_path": normalize_rel_path("/" + zip_name) if save_to_export else None}
 
 
@@ -3201,7 +3493,13 @@ def extract_zip_file(root_key, archive_rel_path, destination_rel_path="/", overw
     extracted_files = 0
     extracted_dirs = 0
     total_size = 0
-    with zipfile.ZipFile(assert_safe_path(root_key, archive_path), "r") as archive:
+    archive_abs = os.path.abspath(str(archive_path or ""))
+    safe_archive_path = os.path.normpath(os.path.realpath(archive_abs))
+    root_prefix = root_base if root_base.endswith(os.sep) else root_base + os.sep
+    if safe_archive_path != root_base and not safe_archive_path.startswith(root_prefix):
+        raise ValueError("Archiv-Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(root_base, archive_abs, allow_missing=False)
+    with zipfile.ZipFile(safe_archive_path, "r") as archive:
         for member in archive.infolist():
             total_size += int(member.file_size or 0)
             if total_size > MAX_ZIP_UNPACK_BYTES:
@@ -3284,7 +3582,7 @@ def save_console_settings(settings):
         with open_safe_internal(settings_dir, temp_path, "w", encoding="utf-8") as handle:
             json.dump(current, handle, indent=2, ensure_ascii=False)
             handle.write("\n")
-        os.replace(assert_safe_internal_path(settings_dir, temp_path, require_exists=True), assert_safe_internal_path(settings_dir, settings_file))
+        replace_internal(settings_dir, temp_path, settings_file)
     except Exception:
         try:
             remove_safe_internal(settings_dir, temp_path)
@@ -3320,10 +3618,10 @@ def cleanup_trash():
         return 0
     cutoff = time.time() - (TRASH_RETENTION_DAYS * 86400)
     removed = 0
-    for name in os.listdir(assert_safe_internal_path(trash_base, trash_base, require_exists=True)):
+    for name in listdir_internal(trash_base, trash_base):
         path = assert_safe_internal_path(trash_base, os.path.join(trash_base, name))
         try:
-            if os.path.getmtime(assert_safe_internal_path(trash_base, path, require_exists=True)) < cutoff:
+            if getmtime_internal(trash_base, path) < cutoff:
                 remove_safe_internal(trash_base, path)
                 removed += 1
         except FileNotFoundError:
@@ -3359,7 +3657,7 @@ def delete_or_trash_path(root_key, rel_path, permanent=False):
     trash_name = safe_download_name("%s-%s-%s" % (timestamp, root_key, rel_path.replace("/", "__")), "winomc-trash")
     target_path = assert_safe_internal_path(trash_base, os.path.join(trash_base, trash_name))
     counter = 1
-    while os.path.exists(assert_safe_internal_path(trash_base, target_path)):
+    while path_exists_internal(trash_base, target_path):
         target_path = assert_safe_internal_path(trash_base, os.path.join(trash_base, "%s-%s" % (trash_name, counter)))
         counter += 1
     move_safe_root_to_internal(root_key, full_path, trash_base, target_path)
@@ -3395,7 +3693,7 @@ def restore_from_trash(trash_rel_path, overwrite=False, destination_root=None, d
         raise ValueError("Ein Papierkorb-Eintrag kann nicht direkt auf einen Wurzelordner wiederhergestellt werden.")
 
     parent = assert_safe_path(target_root, os.path.dirname(target_path))
-    if not os.path.isdir(parent):
+    if not path_is_dir_root(target_root, parent):
         makedirs_root(target_root, parent, exist_ok=True)
 
     if path_exists_root(target_root, target_path):
@@ -3419,7 +3717,7 @@ def empty_trash():
     trash_base = os.path.realpath(TRASH_DIR)
     makedirs_internal(trash_base, trash_base, exist_ok=True)
     removed = 0
-    for name in list(os.listdir(assert_safe_internal_path(trash_base, trash_base, require_exists=True))):
+    for name in list(listdir_internal(trash_base, trash_base)):
         path = assert_safe_internal_path(trash_base, os.path.join(trash_base, name))
         try:
             remove_safe_internal(trash_base, path)
@@ -3428,9 +3726,33 @@ def empty_trash():
             continue
     return {"ok": True, "removed": removed, "message": "Papierkorb geleert."}
 
+def runtime_getsize(candidate_path):
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    for base_path in allowed_runtime_bases():
+        base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+        if safe_path == base_path or safe_path.startswith(base_prefix):
+            assert_no_symlink_component(base_path, candidate_abs, allow_missing=False)
+            if not os.path.exists(safe_path):
+                raise FileNotFoundError("Runtime-Pfad existiert nicht.")
+            return os.path.getsize(safe_path)
+    raise ValueError("Runtime-Pfad außerhalb der erlaubten Bereiche blockiert.")
+
+
+def runtime_path_exists(candidate_path):
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    safe_path = os.path.normpath(os.path.realpath(candidate_abs))
+    for base_path in allowed_runtime_bases():
+        base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+        if safe_path == base_path or safe_path.startswith(base_prefix):
+            assert_no_symlink_component(base_path, candidate_abs, allow_missing=True)
+            return os.path.exists(safe_path)
+    raise ValueError("Runtime-Pfad außerhalb der erlaubten Bereiche blockiert.")
+
+
 def status_payload():
     env_keys = ["SERVER_NAME", "LEVEL_NAME", "VERSION", "BDS_AUTO_UPDATE", "SERVER_PORT", "SERVER_PORT_V6", "ENABLE_LAN_VISIBILITY", "ENABLE_BDS_V6BIND_FIX", "GAMEMODE", "DIFFICULTY", "ALLOW_CHEATS", "ALLOW_LIST", "MAX_PLAYERS", "TEXTUREPACK_REQUIRED", "PACKAGE_BACKUP_KEEP"]
-    return {"ok": True, "fifo_exists": os.path.exists(runtime_fifo_path()), "log_exists": os.path.exists(runtime_log_path()), "env": {key: os.environ.get(key, "") for key in env_keys}, "roots": list_file_roots()}
+    return {"ok": True, "fifo_exists": runtime_path_exists(runtime_fifo_path()), "log_exists": runtime_path_exists(runtime_log_path()), "env": {key: os.environ.get(key, "") for key in env_keys}, "roots": list_file_roots()}
 
 def safe_header_value(value, fallback="application/octet-stream"):
     value = str(value or fallback)
@@ -3486,20 +3808,30 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _send_file(self, file_path, download_name=None, content_type=None, cleanup=False):
-        file_path = assert_safe_download_path(file_path)
+        candidate_abs = os.path.abspath(str(file_path or ""))
+        safe_file_path = os.path.normpath(os.path.realpath(candidate_abs))
+        matched_base = None
+        for base_path in [allowed_root_base(key) for key in FILE_ROOTS] + [canonical_path(tempfile.gettempdir())]:
+            base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
+            if safe_file_path == base_path or safe_file_path.startswith(base_prefix):
+                matched_base = base_path
+                break
+        if matched_base is None:
+            raise ValueError("Download-Pfad außerhalb der erlaubten Bereiche blockiert.")
+        assert_no_symlink_component(matched_base, candidate_abs, allow_missing=False)
         try:
-            if not os.path.isfile(file_path):
+            if not os.path.isfile(safe_file_path):
                 raise FileNotFoundError("Datei nicht gefunden.")
-            download_name = safe_download_name(download_name or os.path.basename(file_path))
-            content_type = safe_content_type(content_type or mimetypes.guess_type(file_path)[0])
-            size = os.path.getsize(file_path)
+            download_name = safe_download_name(download_name or os.path.basename(safe_file_path))
+            content_type = safe_content_type(content_type or mimetypes.guess_type(safe_file_path)[0])
+            size = os.path.getsize(safe_file_path)
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(size))
             self.send_header("Content-Disposition", safe_content_disposition_attachment(download_name))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
-            with open_safe_download(file_path, "rb") as handle:
+            with open(safe_file_path, "rb", opener=safe_open_opener) as handle:
                 while True:
                     chunk = handle.read(1024 * 1024)
                     if not chunk:
@@ -3508,7 +3840,7 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             if cleanup:
                 try:
-                    remove_safe_internal(tempfile.gettempdir(), file_path)
+                    remove_safe_internal(tempfile.gettempdir(), safe_file_path)
                 except OSError as exc:
                     log_warning("Temporärer Download konnte nicht bereinigt werden: %s" % exc)
 
@@ -3687,7 +4019,7 @@ class Handler(BaseHTTPRequestHandler):
                 filename = query.get("filename", [self.headers.get("X-WinoMC-Filename", "upload.bin")])[0]
                 overwrite = parse_bool(query.get("overwrite", ["false"])[0], default=False)
                 target_path, target_rel_path = prepare_upload_target(root_key, dir_rel_path, filename, overwrite=overwrite)
-                backup_path = make_file_backup(target_path, root_key, target_rel_path) if os.path.exists(target_path) else None
+                backup_path = make_file_backup(target_path, root_key, target_rel_path) if path_exists_root(root_key, target_path) else None
                 self._write_request_body_to_file(root_key, target_path, MAX_UPLOAD_BYTES)
                 self._send_json(200, {"ok": True, "root": root_key, "path": target_rel_path, "filename": os.path.basename(target_path), "backup_created": bool(backup_path), "backup_path": backup_path, "message": "Datei hochgeladen."})
             except Exception as exc:
@@ -3706,7 +4038,7 @@ class Handler(BaseHTTPRequestHandler):
                 if len(raw) > MAX_JSON_UPLOAD_BYTES:
                     raise ValueError("JSON-Upload ist zu groß.")
                 target_path, target_rel_path = prepare_upload_target(root_key, dir_rel_path, filename, overwrite=overwrite)
-                backup_path = make_file_backup(target_path, root_key, target_rel_path) if os.path.exists(target_path) else None
+                backup_path = make_file_backup(target_path, root_key, target_rel_path) if path_exists_root(root_key, target_path) else None
                 with open_safe(root_key, target_path, "wb") as handle:
                     handle.write(raw)
                 self._send_json(200, {"ok": True, "root": root_key, "path": target_rel_path, "filename": os.path.basename(target_path), "backup_created": bool(backup_path), "backup_path": backup_path, "message": "Datei hochgeladen."})
@@ -3810,17 +4142,17 @@ class Handler(BaseHTTPRequestHandler):
         for line in read_recent_lines(LOG_PATH, HISTORY_LIMIT):
             self._sse_send({"line": line})
         try:
-            position = os.path.getsize(runtime_log_path())
+            position = runtime_getsize(runtime_log_path())
         except OSError:
             position = 0
         last_heartbeat = time.time()
         while True:
             try:
-                size = os.path.getsize(runtime_log_path())
+                size = runtime_getsize(runtime_log_path())
                 if size < position:
                     position = 0
                 if size > position:
-                    with open_checked(runtime_log_path(), "r", encoding="utf-8", errors="replace") as handle:
+                    with open_runtime(runtime_log_path(), "r", encoding="utf-8", errors="replace") as handle:
                         handle.seek(position)
                         for line in handle:
                             self._sse_send({"line": line.rstrip("\n")})
@@ -3843,8 +4175,8 @@ class Handler(BaseHTTPRequestHandler):
 def main():
     ensure_directories()
     log_path = runtime_log_path()
-    log_parent = ensure_parent_dir(log_path)
-    with open_checked(log_path, "a", encoding="utf-8"):
+    log_parent = ensure_runtime_parent_dir(log_path)
+    with open_runtime(log_path, "a", encoding="utf-8"):
         pass
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
 
