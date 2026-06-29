@@ -5,7 +5,7 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
-### 1.6.1.11
+### 1.6.11
 
 #### UX / Adaptive Layout
 
