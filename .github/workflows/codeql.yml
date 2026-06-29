@@ -1,29 +1,40 @@
-name: "CodeQL Advanced"
+```yaml
+name: "Security Analysis"
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - "main"
+      - "fix/**"
+      - "feature/**"
+      - "release/**"
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - "main"
   schedule:
-    - cron: '25 11 * * 5'
+    - cron: "25 11 * * 5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+  security-events: write
+  packages: read
 
 jobs:
-  analyze:
-    name: Analyze (${{ matrix.language }})
+  codeql:
+    name: CodeQL (${{ matrix.language }})
     runs-on: ubuntu-latest
-
-    permissions:
-      security-events: write
-      packages: read
-      actions: read
-      contents: read
 
     strategy:
       fail-fast: false
       matrix:
         include:
           - language: python
+            build-mode: none
+          - language: c-cpp
+            build-mode: none
+          - language: actions
             build-mode: none
 
     steps:
@@ -35,8 +46,101 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
+          queries: security-extended,security-and-quality
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v4
         with:
           category: "/language:${{ matrix.language }}"
+
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Scan shell scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t files < <(
+            find . \
+              -type f \
+              \( -name "*.sh" -o -name "run" -o -name "run.sh" \) \
+              -not -path "./.git/*" \
+              -not -path "./*/node_modules/*"
+          )
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No shell files found."
+            exit 0
+          fi
+
+          shellcheck "${files[@]}"
+
+  dockerfile:
+    name: Dockerfile Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Scan Dockerfiles with Hadolint
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mapfile -t files < <(
+            find . \
+              -type f \
+              \( -name "Dockerfile" -o -name "Dockerfile.*" \) \
+              -not -path "./.git/*"
+          )
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No Dockerfiles found."
+            exit 0
+          fi
+
+          for file in "${files[@]}"; do
+            echo "Scanning $file"
+            docker run --rm -i hadolint/hadolint hadolint - < "$file"
+          done
+
+  trivy-config:
+    name: Trivy Config Scan
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy config scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: config
+          scan-ref: .
+          format: sarif
+          output: trivy-config-results.sarif
+          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+
+      - name: Upload Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: trivy-config-results.sarif
+          category: trivy-config
+```
