@@ -3963,6 +3963,35 @@ INDEX_HTML = r"""<!doctype html>
       min-height: 0 !important;
     }
 
+
+
+    /* v1.6.14.8 PC Desktop lower free-space blocker hardening
+       Surgical scope: PC Workbench only. The reported lower-half blocker is
+       caused by stale full-width desktop geometry. Normal desktop windows and
+       the Live Console are clamped to sane floating-window bounds; fullscreen
+       still uses the explicit maximize state. */
+    body.ux-desktop.desktop-mode .tab-panel.desktop-open:not(.desktop-minimized):not(.desktop-maximized) {
+      max-width: min(1100px, calc(100vw - 20px)) !important;
+      max-height: calc(100dvh - 66px) !important;
+    }
+
+    body.ux-desktop.desktop-mode .console-dock:not(.desktop-console-dragging):not(.desktop-console-resizing) {
+      width: min(var(--desktop-console-width, 760px), 860px, calc(100vw - 36px)) !important;
+      height: min(var(--desktop-console-height, 320px), 460px, calc(100dvh - 82px)) !important;
+      max-width: min(860px, calc(100vw - 36px)) !important;
+      max-height: calc(100dvh - 82px) !important;
+    }
+
+    body.ux-desktop.desktop-mode.console-hidden .console-dock {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    body.ux-desktop.desktop-mode:not(.console-maximized) .console-dock {
+      border-radius: 16px !important;
+    }
+
 </style>
 </head>
 <body>
@@ -7209,6 +7238,213 @@ INDEX_HTML = r"""<!doctype html>
       console.info('[WinoMC UX] Desktop file free-space hardening loaded ' + VERSION_16147);
     })();
 
+
+
+    /* v1.6.14.8 Desktop lower-free-space blocker hardening
+       Fix stale full-width desktop geometry without touching classic/mobile. */
+    (function hardenDesktopLowerFreeSpace16148() {
+      const VERSION_16148 = '1.6.14.8';
+      const MIGRATION_KEY_16148 = 'winomc.desktop.lowerFreeSpaceMigrated.1.6.14.8';
+      const STORE_DESKTOP_CONSOLE_RECT_16148 = 'winomcDesktopConsoleRectV1';
+      const STORE_DESKTOP_POSITIONS_16148 = 'winomcDesktopPositionsV1';
+
+      function desktopActive16148() {
+        return document.body.classList.contains('ux-desktop') &&
+          document.body.classList.contains('desktop-mode') &&
+          !(typeof isDesktopMobile === 'function' && isDesktopMobile());
+      }
+
+      function readJson16148(key, fallback) {
+        try { return JSON.parse(localStorage.getItem(key) || 'null') ?? fallback; }
+        catch (_) { return fallback; }
+      }
+
+      function writeJson16148(key, value) {
+        try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
+      }
+
+      function maxConsoleWidth16148() {
+        return Math.min(860, Math.max(520, window.innerWidth - 36));
+      }
+
+      function maxConsoleHeight16148() {
+        return Math.min(460, Math.max(220, window.innerHeight - 82));
+      }
+
+      function defaultConsoleRect16148() {
+        const width = Math.min(760, maxConsoleWidth16148());
+        const height = Math.min(340, maxConsoleHeight16148());
+        return {
+          left: Math.max(8, window.innerWidth - width - 18),
+          top: Math.max(8, window.innerHeight - height - 58),
+          width,
+          height
+        };
+      }
+
+      function rectIsFullWidthLowerBlocker16148(rect) {
+        if (!rect) return false;
+        const width = Number(rect.width) || 0;
+        const height = Number(rect.height) || 0;
+        const left = Number(rect.left) || 0;
+        const top = Number(rect.top) || 0;
+        return (width >= window.innerWidth * 0.78 && height >= window.innerHeight * 0.30) ||
+          (left <= 12 && width >= window.innerWidth * 0.68 && top >= window.innerHeight * 0.40) ||
+          (top >= window.innerHeight * 0.46 && height >= window.innerHeight * 0.28);
+      }
+
+      function sanitizeConsoleRect16148(rect) {
+        const fallback = defaultConsoleRect16148();
+        const source = rectIsFullWidthLowerBlocker16148(rect) ? fallback : (rect || fallback);
+        const width = clamp(Number(source.width) || fallback.width, Math.min(420, window.innerWidth - 20), maxConsoleWidth16148());
+        const height = clamp(Number(source.height) || fallback.height, 120, maxConsoleHeight16148());
+        const left = clamp(Number(source.left), 8, Math.max(8, window.innerWidth - width - 8));
+        const top = clamp(Number(source.top), 8, Math.max(8, window.innerHeight - height - 58));
+        return {
+          left: Number.isFinite(left) ? Math.round(left) : fallback.left,
+          top: Number.isFinite(top) ? Math.round(top) : fallback.top,
+          width: Math.round(width),
+          height: Math.round(height)
+        };
+      }
+
+      function applySafeConsoleRect16148(rect) {
+        const safe = sanitizeConsoleRect16148(rect);
+        if (typeof applyDesktopConsoleRect === 'function') {
+          applyDesktopConsoleRect(safe);
+        } else {
+          setRootVar('--desktop-console-left', safe.left + 'px');
+          setRootVar('--desktop-console-top', safe.top + 'px');
+          setRootVar('--desktop-console-right', 'auto');
+          setRootVar('--desktop-console-bottom', 'auto');
+          setRootVar('--desktop-console-width', safe.width + 'px');
+          setRootVar('--desktop-console-height', safe.height + 'px');
+        }
+        writeJson16148(STORE_DESKTOP_CONSOLE_RECT_16148, safe);
+      }
+
+      function hardenConsoleGeometry16148() {
+        if (!desktopActive16148() || !consoleDock || document.body.classList.contains('console-maximized')) return;
+        if (document.body.classList.contains('console-hidden')) {
+          consoleDock.style.removeProperty('left');
+          consoleDock.style.removeProperty('top');
+          consoleDock.style.removeProperty('width');
+          consoleDock.style.removeProperty('height');
+          return;
+        }
+        const stored = readJson16148(STORE_DESKTOP_CONSOLE_RECT_16148, null);
+        const visual = consoleDock.getBoundingClientRect();
+        const candidate = rectIsFullWidthLowerBlocker16148(visual) ? visual : stored;
+        applySafeConsoleRect16148(candidate);
+      }
+
+      function clampDesktopWindowRect16148(rect, id) {
+        const defaultRect = (typeof desktopDefaultRect === 'function') ? desktopDefaultRect(id) : { left: '140px', top: '68px', width: '900px', height: '620px' };
+        const parse = value => Number.parseFloat(String(value || '').replace('px', ''));
+        const source = rect || defaultRect;
+        const maxWidth = Math.min(id === 'files' ? 1100 : 980, window.innerWidth - 20);
+        const maxHeight = Math.min(id === 'files' ? 560 : 660, window.innerHeight - 66);
+        let width = clamp(parse(source.width) || parse(defaultRect.width) || maxWidth, 360, Math.max(360, maxWidth));
+        let height = clamp(parse(source.height) || parse(defaultRect.height) || maxHeight, 260, Math.max(260, maxHeight));
+        let left = clamp(parse(source.left), 6, Math.max(6, window.innerWidth - width - 8));
+        let top = clamp(parse(source.top), 6, Math.max(6, window.innerHeight - height - 58));
+        if (!Number.isFinite(left)) left = parse(defaultRect.left) || 140;
+        if (!Number.isFinite(top)) top = parse(defaultRect.top) || 68;
+
+        const lowerFullBlocker = left <= 8 && width >= window.innerWidth * 0.68 && top >= window.innerHeight * 0.40 && height >= window.innerHeight * 0.25;
+        if (lowerFullBlocker) return clampDesktopWindowRect16148(defaultRect, id);
+
+        return {
+          left: Math.round(left) + 'px',
+          top: Math.round(top) + 'px',
+          width: Math.round(width) + 'px',
+          height: Math.round(height) + 'px'
+        };
+      }
+
+      function hardenStoredDesktopWindows16148() {
+        const positions = readJson16148(STORE_DESKTOP_POSITIONS_16148, {});
+        let changed = false;
+        Object.keys(positions || {}).forEach(id => {
+          const before = JSON.stringify(positions[id]);
+          positions[id] = clampDesktopWindowRect16148(positions[id], id);
+          if (JSON.stringify(positions[id]) !== before) changed = true;
+        });
+        if (changed) writeJson16148(STORE_DESKTOP_POSITIONS_16148, positions);
+      }
+
+      function hardenOpenDesktopWindows16148() {
+        if (!desktopActive16148()) return;
+        document.querySelectorAll('.tab-panel.desktop-open:not(.desktop-minimized):not(.desktop-maximized)').forEach(panel => {
+          const id = panel.dataset.panel || 'overview';
+          const rect = {
+            left: panel.style.left || panel.getBoundingClientRect().left + 'px',
+            top: panel.style.top || panel.getBoundingClientRect().top + 'px',
+            width: panel.style.width || panel.getBoundingClientRect().width + 'px',
+            height: panel.style.height || panel.getBoundingClientRect().height + 'px'
+          };
+          const safe = clampDesktopWindowRect16148(rect, id);
+          panel.style.left = safe.left;
+          panel.style.top = safe.top;
+          panel.style.width = safe.width;
+          panel.style.height = safe.height;
+          try { if (typeof saveDesktopPosition === 'function') saveDesktopPosition(id, panel); } catch (_) {}
+        });
+      }
+
+      function hardenLowerFreeSpace16148() {
+        hardenStoredDesktopWindows16148();
+        if (!desktopActive16148()) return;
+        document.body.classList.remove('has-maximized-card');
+        document.querySelectorAll('.card.maximized').forEach(card => card.classList.remove('maximized'));
+        hardenConsoleGeometry16148();
+        hardenOpenDesktopWindows16148();
+      }
+
+      try {
+        if (typeof applyDesktopConsoleRect === 'function' && !applyDesktopConsoleRect.__winomc16148Wrapped) {
+          const originalApplyDesktopConsoleRect16148 = applyDesktopConsoleRect;
+          applyDesktopConsoleRect = function(rect) {
+            return originalApplyDesktopConsoleRect16148(sanitizeConsoleRect16148(rect));
+          };
+          applyDesktopConsoleRect.__winomc16148Wrapped = true;
+          try { window.applyDesktopConsoleRect = applyDesktopConsoleRect; } catch (_) {}
+        }
+      } catch (_) {}
+
+      function wrapDesktopFunction16148(name, after) {
+        try {
+          const original = window[name] || globalThis[name];
+          if (typeof original !== 'function' || original.__winomc16148Wrapped) return;
+          const wrapped = function(...args) {
+            const result = original.apply(this, args);
+            window.requestAnimationFrame(after);
+            return result;
+          };
+          wrapped.__winomc16148Wrapped = true;
+          globalThis[name] = wrapped;
+          try { window[name] = wrapped; } catch (_) {}
+        } catch (_) {}
+      }
+
+      wrapDesktopFunction16148('setDesktopMode', hardenLowerFreeSpace16148);
+      wrapDesktopFunction16148('openDesktopWindow', hardenLowerFreeSpace16148);
+      wrapDesktopFunction16148('restoreDesktopWindow', hardenLowerFreeSpace16148);
+      wrapDesktopFunction16148('updateDesktopTaskbar', hardenLowerFreeSpace16148);
+
+      window.addEventListener('resize', () => window.requestAnimationFrame(hardenLowerFreeSpace16148), { passive: true });
+      document.addEventListener('pointerdown', () => { if (desktopActive16148()) window.requestAnimationFrame(hardenLowerFreeSpace16148); }, true);
+
+      if (localStorage.getItem(MIGRATION_KEY_16148) !== 'done') {
+        hardenStoredDesktopWindows16148();
+        try { localStorage.setItem(MIGRATION_KEY_16148, 'done'); } catch (_) {}
+      }
+      window.requestAnimationFrame(hardenLowerFreeSpace16148);
+      window.setTimeout(hardenLowerFreeSpace16148, 250);
+      window.setTimeout(hardenLowerFreeSpace16148, 900);
+      console.info('[WinoMC UX] Desktop lower free-space blocker hardening loaded ' + VERSION_16148);
+    })();
+
 </script>
 </body>
 </html>
@@ -8464,7 +8700,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.14.7"
+    server_version = "WinoMCConsole/1.6.14.8"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")
