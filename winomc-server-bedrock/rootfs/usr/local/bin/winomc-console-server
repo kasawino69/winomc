@@ -2271,6 +2271,139 @@ INDEX_HTML = r"""<!doctype html>
       }
     }
 
+
+
+    /* v1.6.11.4 adaptive shell final polish
+       Fixes false tablet detection on desktop browsers, stale collapsed-rail
+       navigation in tablet/mobile profiles, and keeps the mobile console above
+       the iOS/browser bottom toolbar. */
+    :root {
+      --mobile-browser-bottom-gap: 0px;
+    }
+
+    body.ux-mobile:not(.desktop-mode),
+    body.ux-tablet:not(.desktop-mode) {
+      --sidebar-width: 255px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).sidebar-collapsed nav,
+    body.ux-mobile:not(.desktop-mode) nav,
+    body.ux-tablet:not(.desktop-mode).sidebar-collapsed nav,
+    body.ux-tablet:not(.desktop-mode) nav {
+      width: auto !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      max-height: none !important;
+      height: auto !important;
+      min-height: 0 !important;
+      display: flex !important;
+      grid-template-columns: none !important;
+      align-content: stretch !important;
+      justify-content: flex-start !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      scrollbar-width: thin !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).sidebar-collapsed .tab-button,
+    body.ux-mobile:not(.desktop-mode) .tab-button,
+    body.ux-tablet:not(.desktop-mode).sidebar-collapsed .tab-button,
+    body.ux-tablet:not(.desktop-mode) .tab-button {
+      flex: 0 0 auto !important;
+      width: auto !important;
+      max-width: none !important;
+      overflow: visible !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).sidebar-collapsed .tab-button span:not(.icon),
+    body.ux-mobile:not(.desktop-mode) .tab-button span:not(.icon),
+    body.ux-tablet:not(.desktop-mode).sidebar-collapsed .tab-button span:not(.icon),
+    body.ux-tablet:not(.desktop-mode) .tab-button span:not(.icon) {
+      display: inline !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).sidebar-collapsed .tab-button::after,
+    body.ux-tablet:not(.desktop-mode).sidebar-collapsed .tab-button::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) {
+      padding-bottom: calc(var(--console-height) + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-bottom-gap, 0px) + 18px) !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-dock {
+      bottom: var(--mobile-browser-bottom-gap, 0px) !important;
+      max-height: calc(100dvh - 52px - var(--mobile-browser-bottom-gap, 0px)) !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed { --console-height: 74px; }
+    body.ux-mobile:not(.desktop-mode).console-hidden { --console-height: 46px; }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-dock {
+      height: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
+      min-height: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
+      overflow: visible !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-inner,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-inner {
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+      grid-template-rows: auto !important;
+      align-content: start !important;
+      overflow: visible !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-head,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-head {
+      grid-template-columns: minmax(0, 1fr) auto !important;
+      align-items: center !important;
+      gap: 10px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-controls,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-controls {
+      width: auto !important;
+      min-width: 0 !important;
+      justify-content: flex-end !important;
+      overflow: visible !important;
+      padding: 0 !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-secondary-controls,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-secondary-controls {
+      display: inline-flex !important;
+      gap: 6px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-secondary-controls button:not(#consoleCollapse),
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-secondary-controls button:not(#consoleCollapse),
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-window-actions,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-window-actions {
+      display: none !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed #consoleCollapse,
+    body.ux-mobile:not(.desktop-mode).console-hidden #consoleCollapse {
+      display: inline-flex !important;
+      width: auto !important;
+      min-width: max-content !important;
+      min-height: 38px !important;
+      padding: 8px 12px !important;
+      font-size: 13px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed #log,
+    body.ux-mobile:not(.desktop-mode).console-hidden #log,
+    body.ux-mobile:not(.desktop-mode).console-collapsed .command-row,
+    body.ux-mobile:not(.desktop-mode).console-hidden .command-row {
+      display: none !important;
+    }
+
+    body.ux-mobile.desktop-mode .console-dock {
+      bottom: calc(64px + var(--mobile-browser-bottom-gap, 0px)) !important;
+    }
+
   </style>
 </head>
 <body>
@@ -3896,7 +4029,7 @@ INDEX_HTML = r"""<!doctype html>
       const classic = document.createElement('button');
       classic.type = 'button';
       classic.innerHTML = '<span>↩</span><span>Klassische Ansicht</span>';
-      classic.addEventListener('click', () => setDesktopMode(false));
+      classic.addEventListener('click', () => toggleDesktopMode());
       desktopStartMenu.appendChild(classic);
     }
 
@@ -3963,6 +4096,13 @@ INDEX_HTML = r"""<!doctype html>
         if (!document.querySelector('.tab-panel.desktop-open')) openDesktopWindow('overview');
         updateDesktopTaskbar();
       });
+      window.setTimeout(() => {
+        document.body.classList.remove('ux-mobile', 'ux-tablet', 'ux-auto');
+        document.body.classList.add('ux-desktop');
+        if (!document.body.classList.contains('desktop-mode')) setDesktopMode(true, { adaptive: true, manual: true });
+        if (!document.querySelector('.tab-panel.desktop-open')) openDesktopWindow('overview');
+        updateDesktopTaskbar();
+      }, 80);
     }
 
     function setDesktopMode(enabled, options = {}) {
@@ -4010,6 +4150,15 @@ INDEX_HTML = r"""<!doctype html>
       desktopClock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
 
+    function updateVisualViewportInsets() {
+      let bottomGap = 0;
+      if (window.visualViewport) {
+        const viewport = window.visualViewport;
+        bottomGap = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      }
+      document.documentElement.style.setProperty('--mobile-browser-bottom-gap', Math.ceil(bottomGap) + 'px');
+    }
+
     function sanitizeUxProfile(value) {
       return ['auto', 'mobile', 'tablet', 'desktop'].includes(value) ? value : 'auto';
     }
@@ -4017,14 +4166,18 @@ INDEX_HTML = r"""<!doctype html>
     function detectUxProfile() {
       const width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
       const height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+      const finePointer = window.matchMedia && (window.matchMedia('(pointer: fine)').matches || window.matchMedia('(any-pointer: fine)').matches);
       const coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
       const noHover = window.matchMedia && window.matchMedia('(hover: none)').matches;
       const touchPoints = Number(navigator.maxTouchPoints || navigator.msMaxTouchPoints || 0);
       const touchDevice = coarsePointer || noHover || touchPoints > 0;
+      const touchOnly = touchDevice && !finePointer;
       const portrait = height >= width;
 
-      if (width <= 760 || (touchDevice && portrait && width <= 900) || (touchDevice && height <= 760 && width <= 930)) return 'mobile';
-      if (width <= 1180 || (touchDevice && width <= 1400)) return 'tablet';
+      // Desktop browsers with touch support must not be classified as tablets.
+      if (width >= 1280 || (finePointer && width >= 1100 && height >= 640)) return 'desktop';
+      if (width <= 760 || (touchOnly && portrait && width <= 930) || (touchOnly && height <= 760 && width <= 980)) return 'mobile';
+      if (width <= 1180 || (touchOnly && width <= 1366)) return 'tablet';
       return 'desktop';
     }
 
@@ -4037,7 +4190,7 @@ INDEX_HTML = r"""<!doctype html>
       document.body.dataset.uxPreference = preference;
       document.body.dataset.uxProfile = activeProfile;
       if (appTitle) appTitle.textContent = activeProfile === 'mobile' ? 'WinoMC Mobile' : (activeProfile === 'tablet' ? 'WinoMC Tablet' : 'WinoMC Desktop Workbench');
-      if (desktopModeToggle) desktopModeToggle.textContent = activeProfile === 'desktop' ? 'Klassische Ansicht' : 'Desktop-Modus';
+      if (desktopModeToggle) desktopModeToggle.textContent = document.body.classList.contains('desktop-mode') ? 'Klassische Ansicht' : 'Desktop-Modus';
     }
 
     function applyAdaptiveUx() {
@@ -4048,6 +4201,11 @@ INDEX_HTML = r"""<!doctype html>
       document.body.classList.toggle('ux-tablet', activeProfile === 'tablet');
       document.body.classList.toggle('ux-desktop', activeProfile === 'desktop');
       updateUxProfileControl(preference, activeProfile);
+      updateVisualViewportInsets();
+
+      if (activeProfile === 'mobile' || activeProfile === 'tablet') {
+        document.body.classList.remove('sidebar-collapsed');
+      }
 
       const desktopAllowed = preference === 'desktop' || localStorage.getItem(STORE_DESKTOP_MODE) !== 'false';
       if (activeProfile === 'desktop' && desktopAllowed) {
@@ -4062,6 +4220,7 @@ INDEX_HTML = r"""<!doctype html>
           document.querySelectorAll('.card').forEach(card => card.classList.remove('maximized'));
         }
       }
+      if (desktopModeToggle) desktopModeToggle.textContent = document.body.classList.contains('desktop-mode') ? 'Klassische Ansicht' : 'Desktop-Modus';
     }
 
     function setUxProfile(profile) {
@@ -4087,6 +4246,11 @@ INDEX_HTML = r"""<!doctype html>
       if (uxProfileSelect) uxProfileSelect.addEventListener('change', () => setUxProfile(uxProfileSelect.value));
       window.addEventListener('resize', scheduleAdaptiveUx, { passive: true });
       window.addEventListener('orientationchange', scheduleAdaptiveUx, { passive: true });
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => { updateVisualViewportInsets(); scheduleAdaptiveUx(); }, { passive: true });
+        window.visualViewport.addEventListener('scroll', updateVisualViewportInsets, { passive: true });
+      }
+      updateVisualViewportInsets();
       applyAdaptiveUx();
     }
 
@@ -5269,7 +5433,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.11.3"
+    server_version = "WinoMCConsole/1.6.11.4"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")

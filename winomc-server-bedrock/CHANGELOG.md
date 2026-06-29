@@ -5,6 +5,28 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.11.4
+
+#### UX / Adaptive Layout
+
+* Auto-Erkennung für Desktop/Tablet/Mobil korrigiert.
+* PC-Browser mit Touch-Unterstützung werden nicht mehr fälschlich als Tablet erkannt.
+* Defekte Tablet-/Mobile-Navigation nach vorher eingeklappter Sidebar behoben.
+* Mobile und Tablet-Profile entfernen verwaiste Sidebar-Rail-Zustände automatisch.
+
+#### Mobile / iPhone
+
+* Live Console berücksichtigt nun die sichtbare Browserfläche über `visualViewport`.
+* Eingeklappte Live Console bleibt über der iOS-/Browser-Bedienleiste erreichbar.
+* Im eingeklappten Zustand wird mobil nur noch der relevante Ausklappen-Button angezeigt.
+* Console-Bedienelemente verschwinden nicht mehr im unteren Bildschirmrand.
+
+#### Desktop / Klassische Ansicht
+
+* Der Button `Desktop-Modus` / `Klassische Ansicht` richtet sich nun nach dem echten aktiven Zustand und nicht nur nach dem erkannten UX-Profil.
+* Wechsel zwischen klassischer Ansicht und Desktop-Modus robuster gemacht.
+* Version auf `WinoMCConsole/1.6.11.4` angehoben.
+
 ### 1.6.11.3
 
 #### UX / Classic Console
