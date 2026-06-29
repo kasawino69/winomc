@@ -5,6 +5,47 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.1.5
+
+#### Security / CodeQL
+
+* Weitere echte Behebung der CodeQL-Meldungen `py/path-injection` im `winomc-console-server`.
+* Die zentrale Änderung: Dateioperationen führen die Pfadvalidierung jetzt direkt in derselben Funktion aus, in der anschließend der Dateisystemzugriff erfolgt.
+* `listdir_root(...)` und weitere Root-Dateioperationen wurden so umgebaut, dass CodeQL den Ablauf besser nachvollziehen kann:
+  * Pfad wird mit `os.path.abspath(...)`, `os.path.realpath(...)` und `os.path.normpath(...)` kanonisiert.
+  * Der kanonisierte Pfad wird direkt gegen den erlaubten Root-Bereich geprüft.
+  * Erst danach erfolgt `os.listdir(...)`, `os.stat(...)`, `os.path.getsize(...)`, `open(...)`, `os.makedirs(...)`, `os.replace(...)`, `os.remove(...)`, `shutil.move(...)` oder `shutil.rmtree(...)`.
+* Indirekte Muster wie `os.listdir(assert_safe_path(...))` beziehungsweise `safe_path = assert_safe_path(...); os.listdir(safe_path)` wurden für die relevanten Sinks entfernt.
+* Runtime-Dateizugriffe für Log und FIFO wurden ebenfalls expliziter abgesichert:
+  * `runtime_path_exists(...)`
+  * `runtime_getsize(...)`
+  * `open_runtime(...)`
+  * `ensure_runtime_parent_dir(...)`
+* Download-Auslieferung erneut angepasst:
+  * Download-Pfad wird lokal in `_send_file(...)` kanonisiert und geprüft.
+  * `isfile`, `getsize` und `open` verwenden danach denselben geprüften lokalen Pfad.
+* ZIP-Erstellung und ZIP-Import weiter gehärtet:
+  * `archive.write(...)`, `os.walk(...)` und `zipfile.ZipFile(...)` verwenden geprüfte lokale Pfade.
+  * ZIP-Slip-Schutz bleibt aktiv.
+* Interne Papierkorb- und Settings-Dateioperationen wurden von direkten `assert_safe_internal_path(...)`-Ausdrücken an Dateisystem-Sinks auf explizite sichere Wrapper umgestellt.
+
+#### Reliability
+
+* Leere `except: pass`-Blöcke bleiben entfernt.
+* Temporäre Upload-, Editor-, ZIP- und Settings-Dateien werden weiterhin kontrolliert bereinigt.
+* Symlink-Schutz bleibt aktiv, insbesondere bei Schreib-, Lösch-, Download- und Traversal-relevanten Pfaden.
+
+#### Maintenance
+
+* Keine CodeQL-/LGTM-Suppression-Kommentare verwendet.
+* Keine Alert-Unterdrückung eingebaut.
+* Die Sicherheitslogik wurde näher an das von CodeQL empfohlene Muster gebracht: normalisieren, gegen erlaubten Basisordner prüfen, danach erst Dateisystemzugriff.
+* Lokale Prüfung durchgeführt:
+  * `python3 -m py_compile`
+  * AST-Check auf leere `except: pass`-Blöcke
+  * Smoke-Tests für Listing, Lesen, Upload-Schreiben, Traversal-Block, Symlink-Block, ZIP-Slip-Block und ZIP-Erstellung
+
+
 ### 1.6.1.4
 
 #### Security / CodeQL
