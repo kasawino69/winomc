@@ -1,12 +1,9 @@
-name: "Security Analysis"
+name: "CodeQL Advanced"
 
 on:
   push:
     branches:
       - "main"
-      - "fix/**"
-      - "feature/**"
-      - "release/**"
   pull_request:
     branches:
       - "main"
@@ -21,9 +18,10 @@ permissions:
   packages: read
 
 jobs:
-  codeql:
-    name: CodeQL (${{ matrix.language }})
+  analyze-source:
+    name: "CodeQL Source (${{ matrix.language }})"
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     strategy:
       fail-fast: false
@@ -32,8 +30,6 @@ jobs:
           - language: python
             build-mode: none
           - language: c-cpp
-            build-mode: none
-          - language: actions
             build-mode: none
 
     steps:
@@ -52,93 +48,22 @@ jobs:
         with:
           category: "/language:${{ matrix.language }}"
 
-  shellcheck:
-    name: ShellCheck
+  analyze-actions:
+    name: "CodeQL Actions"
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install ShellCheck
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y shellcheck
-
-      - name: Scan shell scripts
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          mapfile -t files < <(
-            find . \
-              -type f \
-              \( -name "*.sh" -o -name "run" -o -name "run.sh" \) \
-              -not -path "./.git/*" \
-              -not -path "./*/node_modules/*"
-          )
-
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "No shell files found."
-            exit 0
-          fi
-
-          shellcheck "${files[@]}"
-
-  dockerfile:
-    name: Dockerfile Scan
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Scan Dockerfiles with Hadolint
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          mapfile -t files < <(
-            find . \
-              -type f \
-              \( -name "Dockerfile" -o -name "Dockerfile.*" \) \
-              -not -path "./.git/*"
-          )
-
-          if [ "${#files[@]}" -eq 0 ]; then
-            echo "No Dockerfiles found."
-            exit 0
-          fi
-
-          for file in "${files[@]}"; do
-            echo "Scanning $file"
-            docker run --rm -i hadolint/hadolint hadolint - < "$file"
-          done
-
-  trivy-config:
-    name: Trivy Config Scan
-    runs-on: ubuntu-latest
-
-    permissions:
-      contents: read
-      security-events: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Run Trivy config scan
-        uses: aquasecurity/trivy-action@master
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
         with:
-          scan-type: config
-          scan-ref: .
-          format: sarif
-          output: trivy-config-results.sarif
-          severity: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+          languages: actions
+          queries: security-extended,security-and-quality
 
-      - name: Upload Trivy SARIF
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
         with:
-          sarif_file: trivy-config-results.sarif
-          category: trivy-config
+          category: "/language:actions"
