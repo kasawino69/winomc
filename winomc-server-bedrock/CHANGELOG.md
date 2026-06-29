@@ -5,6 +5,41 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.13.1
+
+#### UX / Navigation
+
+* PC-Workbench wieder als eigener Navigationspunkt in der PC-Ansicht ergänzt.
+* PC-Workbench bleibt auf Mobile bewusst ausgeblendet, da der Modus dort keinen sinnvollen Nutzen hat.
+* Alte Legacy-Einträge wie `Desktop-Modus` werden weiterhin bereinigt, ohne den neuen PC-Workbench-Eintrag zu entfernen.
+
+#### Konsole / Befehlshilfe
+
+* Befehlshilfe stark erweitert und an die offizielle Minecraft-Bedrock-Befehlsliste angepasst.
+* Gamerules vollständig ergänzt, inklusive Boolean-, Integer- und `playerwaypoints`-Varianten.
+* Vorschläge werden auf PC und Mobile nur noch in die Eingabe übernommen und niemals direkt ausgeführt.
+* Mobile Touch-Auswahl der Vorschläge abgesichert, damit kein unbeabsichtigter Submit ausgelöst wird.
+* Platzhalter-Befehle wie `gamemode creative <player>` bleiben als editierbare Eingabe stehen, bis der Nutzer den fehlenden Wert ergänzt und selbst sendet.
+
+#### Mobile UX
+
+* Editor-Overlay auf Mobile korrigiert: Bedienelemente überlappen den Inhaltsbereich nicht mehr.
+* Editor-Aktionen sind mobil horizontal scrollbar und nehmen weniger vertikalen Platz ein.
+* Live-Console-Schieber auf Mobile wieder nutzbar gemacht.
+* Eingeklappte mobile Live Console kann über den Schieber wieder in einen normalen, veränderbaren Zustand gebracht werden.
+
+#### Dashboard
+
+* Dashboard-Kacheln lösen beim Klick auf die Kachel selbst keinen Befehl mehr aus.
+* Befehle werden nur noch über die sichtbare Schaltfläche `Ausführen` gestartet.
+* Drag & Drop am PC bleibt erhalten; Mobile behält das Aktionsmenü.
+
+#### Maintenance
+
+* Version auf `WinoMCConsole/1.6.13.1` angehoben.
+* Datei syntaktisch geprüft.
+* JavaScript extrahiert und mit Node geprüft.
+
 ### 1.6.13
 
 #### UX / Shell Cleanup

@@ -2878,6 +2878,90 @@ INDEX_HTML = r"""<!doctype html>
       scroll-padding-bottom: 110px !important;
     }
 
+
+
+    /* v1.6.13.1 UX polish: PC Workbench nav, mobile editor safety, mobile console resizing */
+    body.ux-mobile #pcWorkbenchNav,
+    body.ux-mobile .pc-workbench-nav,
+    body.ux-mobile #desktopModeToggle,
+    body.ux-mobile option[value="desktop"] {
+      display: none !important;
+    }
+
+    body.ux-desktop #pcWorkbenchNav {
+      display: flex !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen {
+      inset: 8px 8px calc(var(--console-height) + env(safe-area-inset-bottom, 0px) + 10px) 8px !important;
+      display: grid !important;
+      grid-template-rows: auto auto auto auto minmax(0, 1fr) auto !important;
+      overflow: hidden !important;
+      max-height: calc(100dvh - var(--console-height) - env(safe-area-inset-bottom, 0px) - 18px) !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open .editor-actions,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen .editor-actions {
+      position: static !important;
+      z-index: auto !important;
+      display: flex !important;
+      flex-wrap: nowrap !important;
+      gap: 8px !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      padding: 8px 0 10px !important;
+      margin: 0 !important;
+      scrollbar-width: thin !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open .editor-actions button,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen .editor-actions button {
+      flex: 0 0 auto !important;
+      width: auto !important;
+      min-width: max-content !important;
+      min-height: 38px !important;
+      padding: 8px 12px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open .editor-box,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen .editor-box {
+      min-height: 0 !important;
+      height: 100% !important;
+      overflow: auto !important;
+      resize: none !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-resize-handle {
+      display: flex !important;
+      pointer-events: auto !important;
+      height: 26px !important;
+      top: -8px !important;
+      touch-action: none !important;
+      z-index: 3 !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-resize-handle::after {
+      width: 138px !important;
+      height: 6px !important;
+      background: rgba(148, 163, 184, .72) !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-resize-handle,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-resize-handle {
+      display: flex !important;
+      pointer-events: auto !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-dock,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-dock {
+      min-height: calc(88px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    .command-suggestion.is-template code {
+      color: #fde68a !important;
+    }
+
   </style>
 </head>
 <body>
@@ -2899,6 +2983,7 @@ INDEX_HTML = r"""<!doctype html>
       <button class="tab-button" data-tab="network" aria-label="Netzwerk"><span class="icon">🛜</span> Netzwerk</button>
       <button class="tab-button" data-tab="files" aria-label="Dateien"><span class="icon">📁</span> Dateien</button>
       <button class="tab-button" data-tab="expert" aria-label="Experten"><span class="icon">🧰</span> Experten</button>
+      <button class="tab-button pc-workbench-nav" type="button" id="pcWorkbenchNav" aria-label="PC-Workbench"><span class="icon">🖥️</span> PC-Workbench</button>
     </nav>
 
     <main class="content">
@@ -4082,10 +4167,14 @@ INDEX_HTML = r"""<!doctype html>
         event.preventDefault();
         if (!isDesktopModeActive() && (document.body.classList.contains('console-collapsed') || document.body.classList.contains('console-hidden'))) {
           setConsoleMode('normal');
-          return;
         }
         startY = event.clientY;
-        startHeight = consoleDock ? consoleDock.getBoundingClientRect().height : 330;
+        if (document.body.classList.contains('ux-mobile')) {
+          const storedHeight = Number(localStorage.getItem(STORE_CONSOLE_HEIGHT) || 0);
+          startHeight = storedHeight || Math.max(260, Math.round(window.innerHeight * 0.38));
+        } else {
+          startHeight = consoleDock ? consoleDock.getBoundingClientRect().height : 330;
+        }
         startTop = consoleDock ? consoleDock.getBoundingClientRect().top : 0;
         consoleResizeHandle.classList.add('dragging');
         if (isDesktopModeActive()) {
@@ -4914,7 +5003,8 @@ INDEX_HTML = r"""<!doctype html>
       document.querySelectorAll('[data-tab="desktop"], [data-tab="workbench"]').forEach(item => item.remove());
       document.querySelectorAll('nav .tab-button').forEach(item => {
         const label = (item.textContent || '').trim().toLowerCase();
-        if (label.includes('desktop-modus') || label.includes('pc-workbench')) item.remove();
+        if (label.includes('desktop-modus')) item.remove();
+        if (label.includes('pc-workbench') && item.id !== 'pcWorkbenchNav') item.remove();
       });
     }
 
@@ -5184,6 +5274,158 @@ INDEX_HTML = r"""<!doctype html>
       baseInitAdaptiveUx();
       cleanupLegacyNavigation();
     };
+
+
+
+    /* v1.6.13.1 final UX fixes + complete Bedrock command assistant */
+    const BEDROCK_COMMAND_CATALOG_16131 = [{"cmd":"help ","title":"Hilfe / Syntax anzeigen","group":"Hilfe","template":false},{"cmd":"? ","title":"Hilfe-Alias","group":"Hilfe","template":false},{"cmd":"allowlist list","title":"Allowlist anzeigen","group":"Server","template":false},{"cmd":"allowlist add <player>","title":"Spieler zur Allowlist hinzufügen","group":"Server","template":true},{"cmd":"allowlist remove <player>","title":"Spieler aus Allowlist entfernen","group":"Server","template":true},{"cmd":"allowlist reload","title":"Allowlist neu laden","group":"Server","template":false},{"cmd":"changesetting <setting> <value>","title":"Dedizierte Server-Einstellung live ändern","group":"Server","template":true},{"cmd":"deop <player>","title":"Operatorrechte entfernen","group":"Server","template":true},{"cmd":"kick <player> [reason]","title":"Spieler kicken","group":"Server","template":true},{"cmd":"list","title":"Spieler anzeigen","group":"Server","template":false},{"cmd":"op <player>","title":"Operatorrechte geben","group":"Server","template":true},{"cmd":"packstack","title":"Client-/Server-Pack-Stack ausgeben","group":"Server","template":false},{"cmd":"permission reload","title":"Permissions neu laden","group":"Server","template":false},{"cmd":"reload","title":"Behavior-Packs/Funktionen/Scripts neu laden","group":"Server","template":false},{"cmd":"reloadconfig","title":"Server-Konfiguration neu laden","group":"Server","template":false},{"cmd":"reloadpacketlimitconfig","title":"Packet-Limit-Konfiguration neu laden","group":"Server","template":false},{"cmd":"save hold","title":"Weltspeichern pausieren","group":"Server","template":false},{"cmd":"save query","title":"Speicherstatus prüfen","group":"Server","template":false},{"cmd":"save resume","title":"Weltspeichern fortsetzen","group":"Server","template":false},{"cmd":"sendshowstoreoffer <target> <offer>","title":"Marketplace-Angebot öffnen lassen","group":"Server","template":true},{"cmd":"setmaxplayers <maxPlayers>","title":"Maximale Spielerzahl setzen","group":"Server","template":true},{"cmd":"stop","title":"Server stoppen","group":"Server","template":false},{"cmd":"transfer <player> <server> [port]","title":"Spieler auf anderen Server übertragen","group":"Server","template":true},{"cmd":"wsserver <serverUri>","title":"WebSocket-Server verbinden","group":"Server","template":true},{"cmd":"say <message>","title":"Nachricht an alle senden","group":"Chat","template":true},{"cmd":"me <message>","title":"Emote/Nachricht senden","group":"Chat","template":true},{"cmd":"tell <player> <message>","title":"Private Nachricht","group":"Chat","template":true},{"cmd":"msg <player> <message>","title":"Private Nachricht-Alias","group":"Chat","template":true},{"cmd":"w <player> <message>","title":"Whisper-Alias","group":"Chat","template":true},{"cmd":"tellraw <player> <json>","title":"JSON-Chatnachricht senden","group":"Chat","template":true},{"cmd":"title <player> <title|subtitle|actionbar> <text>","title":"Titel anzeigen","group":"Chat","template":true},{"cmd":"titleraw <player> <title|subtitle|actionbar> <json>","title":"JSON-Titel anzeigen","group":"Chat","template":true},{"cmd":"dialogue open <npc> <player> [scene]","title":"NPC-Dialog öffnen","group":"Chat","template":true},{"cmd":"aimassist <player> <enable|disable>","title":"Aim Assist steuern","group":"Spieler","template":true},{"cmd":"clear <player> [item] [data] [maxCount]","title":"Inventar leeren","group":"Spieler","template":true},{"cmd":"controlscheme <player> <scheme>","title":"Steuerungsschema setzen","group":"Spieler","template":true},{"cmd":"gamemode survival <player>","title":"Spieler auf Survival setzen","group":"Spieler","template":true},{"cmd":"gamemode creative <player>","title":"Spieler auf Kreativ setzen","group":"Spieler","template":true},{"cmd":"gamemode adventure <player>","title":"Spieler auf Abenteuer setzen","group":"Spieler","template":true},{"cmd":"gamemode spectator <player>","title":"Spieler auf Zuschauer setzen","group":"Spieler","template":true},{"cmd":"give <player> <item> [amount]","title":"Item geben","group":"Spieler","template":true},{"cmd":"hud <player> <hide|reset> [hud_element]","title":"HUD-Elemente steuern","group":"Spieler","template":true},{"cmd":"inputpermission set <player> <permission> <enabled|disabled>","title":"Eingaben aktivieren/deaktivieren","group":"Spieler","template":true},{"cmd":"inputpermission query <player> <permission>","title":"Eingaberechte abfragen","group":"Spieler","template":true},{"cmd":"spawnpoint <player> [x y z]","title":"Spawnpunkt setzen","group":"Spieler","template":true},{"cmd":"teleport <target> <destination>","title":"Teleportieren","group":"Spieler","template":true},{"cmd":"tp <target> <destination>","title":"Teleport-Alias","group":"Spieler","template":true},{"cmd":"xp <amount> <player>","title":"Erfahrung hinzufügen/entfernen","group":"Spieler","template":true},{"cmd":"recipe give <player> <recipe>","title":"Rezept freischalten","group":"Spieler","template":true},{"cmd":"recipe take <player> <recipe>","title":"Rezept entziehen","group":"Spieler","template":true},{"cmd":"daylock true","title":"Tag-/Nachtzyklus sperren","group":"Welt","template":false},{"cmd":"daylock false","title":"Tag-/Nachtzyklus freigeben","group":"Welt","template":false},{"cmd":"alwaysday true","title":"Tag dauerhaft aktivieren","group":"Welt","template":false},{"cmd":"alwaysday false","title":"Tag dauerhaft deaktivieren","group":"Welt","template":false},{"cmd":"difficulty peaceful","title":"Schwierigkeit Friedlich","group":"Welt","template":false},{"cmd":"difficulty easy","title":"Schwierigkeit Einfach","group":"Welt","template":false},{"cmd":"difficulty normal","title":"Schwierigkeit Normal","group":"Welt","template":false},{"cmd":"difficulty hard","title":"Schwierigkeit Schwer","group":"Welt","template":false},{"cmd":"mobevent <event> <true|false>","title":"Mobevent aktivieren/deaktivieren","group":"Welt","template":true},{"cmd":"setworldspawn [x y z]","title":"Weltspawn setzen","group":"Welt","template":true},{"cmd":"tickingarea list","title":"Ticking Areas anzeigen","group":"Welt","template":false},{"cmd":"tickingarea add <from> <to> <name>","title":"Ticking Area hinzufügen","group":"Welt","template":true},{"cmd":"tickingarea remove <name>","title":"Ticking Area entfernen","group":"Welt","template":true},{"cmd":"time query daytime","title":"Tageszeit abfragen","group":"Welt","template":false},{"cmd":"time set day","title":"Zeit auf Tag setzen","group":"Welt","template":false},{"cmd":"time set night","title":"Zeit auf Nacht setzen","group":"Welt","template":false},{"cmd":"time add <amount>","title":"Zeit addieren","group":"Welt","template":true},{"cmd":"toggledownfall","title":"Wetter umschalten","group":"Welt","template":false},{"cmd":"weather clear [duration]","title":"Wetter klar","group":"Welt","template":true},{"cmd":"weather rain [duration]","title":"Regen","group":"Welt","template":true},{"cmd":"weather thunder [duration]","title":"Gewitter","group":"Welt","template":true},{"cmd":"clearspawnpoint <player>","title":"Spawnpunkt entfernen","group":"Weltbearbeitung","template":true},{"cmd":"clone <begin> <end> <destination>","title":"Blöcke klonen","group":"Weltbearbeitung","template":true},{"cmd":"fill <from> <to> <block> [mode]","title":"Bereich füllen","group":"Weltbearbeitung","template":true},{"cmd":"place <feature|jigsaw|structure> <name> [position]","title":"Feature/Struktur platzieren","group":"Weltbearbeitung","template":true},{"cmd":"setblock <position> <block> [mode]","title":"Block setzen","group":"Weltbearbeitung","template":true},{"cmd":"spreadplayers <x z> <spreadDistance> <maxRange> <targets>","title":"Spieler/Entitäten verteilen","group":"Weltbearbeitung","template":true},{"cmd":"structure save <name> <from> <to>","title":"Struktur speichern","group":"Weltbearbeitung","template":true},{"cmd":"structure load <name> <position>","title":"Struktur laden","group":"Weltbearbeitung","template":true},{"cmd":"damage <target> <amount> [cause]","title":"Entität Schaden zufügen","group":"Entitäten","template":true},{"cmd":"effect <target> <effect> [seconds] [amplifier]","title":"Effekt geben","group":"Entitäten","template":true},{"cmd":"effect <target> clear","title":"Effekte entfernen","group":"Entitäten","template":true},{"cmd":"enchant <player> <enchantment> [level]","title":"Item verzaubern","group":"Entitäten","template":true},{"cmd":"event entity <target> <event>","title":"Entity-Event auslösen","group":"Entitäten","template":true},{"cmd":"kill <target>","title":"Entität töten","group":"Entitäten","template":true},{"cmd":"playanimation <target> <animation>","title":"Animation abspielen","group":"Entitäten","template":true},{"cmd":"replaceitem entity <target> <slot> <item> [amount]","title":"Entity-Slot ersetzen","group":"Entitäten","template":true},{"cmd":"ride <riders> start_riding <ride>","title":"Entity reiten lassen","group":"Entitäten","template":true},{"cmd":"summon <entity> [position]","title":"Entität beschwören","group":"Entitäten","template":true},{"cmd":"tag <target> add <name>","title":"Tag hinzufügen","group":"Entitäten","template":true},{"cmd":"tag <target> remove <name>","title":"Tag entfernen","group":"Entitäten","template":true},{"cmd":"tag <target> list","title":"Tags anzeigen","group":"Entitäten","template":true},{"cmd":"testfor <target>","title":"Entitäten testen","group":"Entitäten","template":true},{"cmd":"execute as <target> at <target> run <command>","title":"Command kontextabhängig ausführen","group":"Logik","template":true},{"cmd":"function <name>","title":"Function ausführen","group":"Logik","template":true},{"cmd":"schedule on_area_loaded add <from> <to> <function>","title":"Function planen","group":"Logik","template":true},{"cmd":"scoreboard objectives list","title":"Scoreboard-Ziele anzeigen","group":"Logik","template":false},{"cmd":"scoreboard objectives add <name> dummy <displayName>","title":"Scoreboard-Ziel anlegen","group":"Logik","template":true},{"cmd":"scoreboard players set <player> <objective> <score>","title":"Score setzen","group":"Logik","template":true},{"cmd":"scriptevent <messageId> [payload]","title":"Script-Event auslösen","group":"Logik","template":true},{"cmd":"gametest run <testName>","title":"GameTest ausführen","group":"Scripting","template":true},{"cmd":"script profiler start","title":"Script-Profiler starten","group":"Scripting","template":false},{"cmd":"script profiler stop","title":"Script-Profiler stoppen","group":"Scripting","template":false},{"cmd":"project <subcommand>","title":"Editor-Projekt-Tools","group":"Scripting","template":true},{"cmd":"camera <player> clear","title":"Kamera zurücksetzen","group":"Kamera","template":true},{"cmd":"camera <player> set <preset>","title":"Kamera setzen","group":"Kamera","template":true},{"cmd":"camera <player> fade","title":"Kamera-Fade","group":"Kamera","template":true},{"cmd":"camerashake add <player> <intensity> <seconds> [type]","title":"Kamerawackeln hinzufügen","group":"Kamera","template":true},{"cmd":"camerashake stop <player>","title":"Kamerawackeln stoppen","group":"Kamera","template":true},{"cmd":"fog <player> push <fogId> <userProvidedId>","title":"Fog hinzufügen","group":"Effekte","template":true},{"cmd":"fog <player> pop <userProvidedId>","title":"Fog entfernen","group":"Effekte","template":true},{"cmd":"music play <trackName> [volume] [fadeSeconds] [repeatMode]","title":"Musik abspielen","group":"Effekte","template":true},{"cmd":"music stop [fadeSeconds]","title":"Musik stoppen","group":"Effekte","template":true},{"cmd":"particle <effect> <position>","title":"Partikel erzeugen","group":"Effekte","template":true},{"cmd":"playsound <sound> <player> [position] [volume] [pitch]","title":"Sound abspielen","group":"Effekte","template":true},{"cmd":"stopsound <player> [sound]","title":"Sound stoppen","group":"Effekte","template":true},{"cmd":"locate structure <structure> [useNewChunksOnly]","title":"Struktur finden","group":"Suche","template":true},{"cmd":"locate biome <biome>","title":"Biome finden","group":"Suche","template":true},{"cmd":"loot spawn <position> loot <lootTable>","title":"Loot erzeugen","group":"Loot","template":true},{"cmd":"loot give <player> loot <lootTable>","title":"Loot geben","group":"Loot","template":true},{"cmd":"testforblock <position> <block>","title":"Block testen","group":"Tests","template":true},{"cmd":"testforblocks <begin> <end> <destination> [mode]","title":"Blockbereiche vergleichen","group":"Tests","template":true},{"cmd":"gamerule commandblockoutput true","title":"Gamerule commandblockoutput aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule commandblockoutput false","title":"Gamerule commandblockoutput deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule dodaylightcycle true","title":"Gamerule dodaylightcycle aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule dodaylightcycle false","title":"Gamerule dodaylightcycle deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule doentitydrops true","title":"Gamerule doentitydrops aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule doentitydrops false","title":"Gamerule doentitydrops deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule dofiretick true","title":"Gamerule dofiretick aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule dofiretick false","title":"Gamerule dofiretick deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule recipesunlock true","title":"Gamerule recipesunlock aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule recipesunlock false","title":"Gamerule recipesunlock deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule dolimitedcrafting true","title":"Gamerule dolimitedcrafting aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule dolimitedcrafting false","title":"Gamerule dolimitedcrafting deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule domobloot true","title":"Gamerule domobloot aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule domobloot false","title":"Gamerule domobloot deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule domobspawning true","title":"Gamerule domobspawning aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule domobspawning false","title":"Gamerule domobspawning deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule dotiledrops true","title":"Gamerule dotiledrops aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule dotiledrops false","title":"Gamerule dotiledrops deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule doweathercycle true","title":"Gamerule doweathercycle aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule doweathercycle false","title":"Gamerule doweathercycle deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule drowningdamage true","title":"Gamerule drowningdamage aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule drowningdamage false","title":"Gamerule drowningdamage deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule falldamage true","title":"Gamerule falldamage aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule falldamage false","title":"Gamerule falldamage deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule firedamage true","title":"Gamerule firedamage aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule firedamage false","title":"Gamerule firedamage deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule keepinventory true","title":"Gamerule keepinventory aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule keepinventory false","title":"Gamerule keepinventory deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule mobgriefing true","title":"Gamerule mobgriefing aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule mobgriefing false","title":"Gamerule mobgriefing deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule pvp true","title":"Gamerule pvp aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule pvp false","title":"Gamerule pvp deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule showcoordinates true","title":"Gamerule showcoordinates aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule showcoordinates false","title":"Gamerule showcoordinates deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule showdaysplayed true","title":"Gamerule showdaysplayed aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule showdaysplayed false","title":"Gamerule showdaysplayed deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule naturalregeneration true","title":"Gamerule naturalregeneration aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule naturalregeneration false","title":"Gamerule naturalregeneration deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule tntexplodes true","title":"Gamerule tntexplodes aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule tntexplodes false","title":"Gamerule tntexplodes deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule sendcommandfeedback true","title":"Gamerule sendcommandfeedback aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule sendcommandfeedback false","title":"Gamerule sendcommandfeedback deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule doinsomnia true","title":"Gamerule doinsomnia aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule doinsomnia false","title":"Gamerule doinsomnia deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule commandblocksenabled true","title":"Gamerule commandblocksenabled aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule commandblocksenabled false","title":"Gamerule commandblocksenabled deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule doimmediaterespawn true","title":"Gamerule doimmediaterespawn aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule doimmediaterespawn false","title":"Gamerule doimmediaterespawn deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule showdeathmessages true","title":"Gamerule showdeathmessages aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule showdeathmessages false","title":"Gamerule showdeathmessages deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule showtags true","title":"Gamerule showtags aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule showtags false","title":"Gamerule showtags deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule freezedamage true","title":"Gamerule freezedamage aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule freezedamage false","title":"Gamerule freezedamage deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule respawnblocksexplode true","title":"Gamerule respawnblocksexplode aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule respawnblocksexplode false","title":"Gamerule respawnblocksexplode deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule showbordereffect true","title":"Gamerule showbordereffect aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule showbordereffect false","title":"Gamerule showbordereffect deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule showrecipemessages true","title":"Gamerule showrecipemessages aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule showrecipemessages false","title":"Gamerule showrecipemessages deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule projectilescanbreakblocks true","title":"Gamerule projectilescanbreakblocks aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule projectilescanbreakblocks false","title":"Gamerule projectilescanbreakblocks deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule tntexplosiondropdecay true","title":"Gamerule tntexplosiondropdecay aktivieren","group":"Gamerules","template":false},{"cmd":"gamerule tntexplosiondropdecay false","title":"Gamerule tntexplosiondropdecay deaktivieren","group":"Gamerules","template":false},{"cmd":"gamerule maxcommandchainlength 65536","title":"Gamerule maxcommandchainlength setzen","group":"Gamerules","template":false},{"cmd":"gamerule randomtickspeed 1","title":"Gamerule randomtickspeed setzen","group":"Gamerules","template":false},{"cmd":"gamerule functioncommandlimit 10000","title":"Gamerule functioncommandlimit setzen","group":"Gamerules","template":false},{"cmd":"gamerule spawnradius 5","title":"Gamerule spawnradius setzen","group":"Gamerules","template":false},{"cmd":"gamerule playerssleepingpercentage 100","title":"Gamerule playerssleepingpercentage setzen","group":"Gamerules","template":false},{"cmd":"gamerule playerwaypoints everyone","title":"Player Waypoints für alle","group":"Gamerules","template":false},{"cmd":"gamerule playerwaypoints off","title":"Player Waypoints aus","group":"Gamerules","template":false}];
+
+    if (Array.isArray(BEDROCK_COMMAND_CATALOG)) {
+      BEDROCK_COMMAND_CATALOG.length = 0;
+      BEDROCK_COMMAND_CATALOG.push(...BEDROCK_COMMAND_CATALOG_16131);
+    }
+
+    function ensurePcWorkbenchNav() {
+      const nav = document.querySelector('nav[aria-label="WinoMC Menü"]');
+      if (!nav) return null;
+      let button = document.getElementById('pcWorkbenchNav');
+      if (!button) {
+        button = document.createElement('button');
+        button.type = 'button';
+        button.id = 'pcWorkbenchNav';
+        button.className = 'tab-button pc-workbench-nav';
+        button.setAttribute('aria-label', 'PC-Workbench');
+        button.innerHTML = '<span class="icon">🖥️</span> PC-Workbench';
+        nav.appendChild(button);
+      }
+      button.hidden = isLikelyMobileViewport();
+      button.disabled = isLikelyMobileViewport();
+      button.onclick = event => {
+        event.preventDefault();
+        event.stopPropagation();
+        enterDesktopModeFromUser();
+      };
+      return button;
+    }
+
+    const cleanupLegacyNavigation_16131 = cleanupLegacyNavigation;
+    cleanupLegacyNavigation = function() {
+      cleanupLegacyNavigation_16131();
+      ensurePcWorkbenchNav();
+      const pcButton = document.getElementById('pcWorkbenchNav');
+      if (pcButton && isLikelyMobileViewport()) pcButton.remove();
+    };
+
+    const updateUxProfileControl_16131 = updateUxProfileControl;
+    updateUxProfileControl = function(preference, activeProfile) {
+      updateUxProfileControl_16131(preference, activeProfile);
+      const pcButton = ensurePcWorkbenchNav();
+      if (pcButton) {
+        const mobile = activeProfile === 'mobile' || isLikelyMobileViewport();
+        pcButton.hidden = mobile;
+        pcButton.disabled = mobile;
+      }
+    };
+
+    const renderDashboard_16131 = renderDashboard;
+    renderDashboard = function() {
+      renderDashboard_16131();
+      dashboardGrid.querySelectorAll('.dashboard-tile[data-action-id]').forEach(tile => {
+        tile.dataset.dashboardActionId = tile.dataset.actionId || '';
+        tile.removeAttribute('data-action-id');
+      });
+    };
+
+    window.__commandSuggestionSelecting = false;
+    form?.addEventListener('submit', event => {
+      if (window.__commandSuggestionSelecting) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    }, true);
+
+    function fillCommandFromSuggestion(command) {
+      window.__commandSuggestionSelecting = true;
+      input.value = String(command || '').replace(/^\//, '');
+      input.focus({ preventScroll: true });
+      const pos = input.value.length;
+      try { input.setSelectionRange(pos, pos); } catch (_) {}
+      window.setTimeout(() => { window.__commandSuggestionSelecting = false; }, 650);
+    }
+
+    initCommandAssistant = function() {
+      if (!input || !form) return;
+      document.getElementById('commandAssistant')?.remove();
+      const assistant = document.createElement('div');
+      assistant.id = 'commandAssistant';
+      assistant.className = 'console-assistant';
+      assistant.innerHTML = '<div class="console-assistant-title">Befehlshilfe <span class="badge">Übernehmen, nicht senden</span></div><div class="command-suggestion-list" id="commandSuggestionList"></div>';
+      document.body.appendChild(assistant);
+      const list = assistant.querySelector('#commandSuggestionList');
+      function hide() { assistant.classList.remove('open'); }
+      function score(item, term) {
+        const needle = term.toLowerCase().replace(/^\//, '');
+        const cmd = String(item.cmd || '').toLowerCase();
+        const title = String(item.title || '').toLowerCase();
+        const group = String(item.group || '').toLowerCase();
+        if (cmd === needle) return 0;
+        if (cmd.startsWith(needle)) return 1;
+        if (cmd.includes(' ' + needle) || cmd.includes(needle)) return 2;
+        if (title.includes(needle)) return 3;
+        if (group.includes(needle)) return 4;
+        return 99;
+      }
+      function commandMatchesFull(item, term) {
+        const hay = [item.cmd, item.title, item.group].join(' ').toLowerCase();
+        return hay.includes(term.toLowerCase().replace(/^\//, ''));
+      }
+      function render() {
+        const term = input.value.trim();
+        if (!term || term.length < 1 || document.body.classList.contains('console-collapsed') || document.body.classList.contains('console-hidden')) { hide(); return; }
+        const matches = BEDROCK_COMMAND_CATALOG
+          .filter(item => commandMatchesFull(item, term))
+          .sort((a,b) => score(a, term) - score(b, term) || String(a.cmd).localeCompare(String(b.cmd)))
+          .slice(0, 12);
+        if (!matches.length) { hide(); return; }
+        list.innerHTML = '';
+        matches.forEach(item => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'command-suggestion' + (item.template ? ' is-template' : '');
+          btn.setAttribute('aria-label', 'Befehl übernehmen: ' + item.cmd);
+          btn.innerHTML = '<span><code>' + escapeHtml(item.cmd) + '</code><small>' + escapeHtml(item.title) + '</small></span><span class="badge">' + escapeHtml(item.group) + '</span>';
+          const apply = event => {
+            event.preventDefault();
+            event.stopPropagation();
+            fillCommandFromSuggestion(item.cmd);
+            hide();
+          };
+          btn.addEventListener('pointerdown', apply, { passive: false });
+          btn.addEventListener('touchend', apply, { passive: false });
+          btn.addEventListener('click', apply);
+          list.appendChild(btn);
+        });
+        assistant.classList.add('open');
+      }
+      input.addEventListener('input', render);
+      input.addEventListener('focus', render);
+      input.addEventListener('blur', () => window.setTimeout(() => { if (!window.__commandSuggestionSelecting) hide(); }, 240));
+    };
+
+    const enhanceConsolePanel_16131 = enhanceConsolePanel;
+    enhanceConsolePanel = function() {
+      enhanceConsolePanel_16131();
+      const panel = document.querySelector('[data-panel="console"]');
+      const firstCard = panel?.querySelector('.command-help-card');
+      if (firstCard && !firstCard.dataset.fullCatalogNote) {
+        firstCard.dataset.fullCatalogNote = 'true';
+        const note = document.createElement('p');
+        note.textContent = 'Der Katalog enthält alle Microsoft-Learn-Bedrock-Befehle plus Gamerules und wichtige Server-Aliasse. Vorschläge werden immer nur in die Eingabe übernommen.';
+        firstCard.appendChild(note);
+      }
+    };
+
+    ensurePcWorkbenchNav();
 
     initDesktopConsoleWindow(); initFileSplitResize(); initCardChrome(); initDesktopWorkbench(); initAdaptiveUx(); renderDashboard(); connectLogs(); loadStatus();
   </script>
@@ -6344,7 +6586,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.13"
+    server_version = "WinoMCConsole/1.6.13.1"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")
