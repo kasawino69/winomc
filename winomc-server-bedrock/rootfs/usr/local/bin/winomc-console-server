@@ -1506,9 +1506,9 @@ INDEX_HTML = r"""<!doctype html>
 
 
     /* v1.6.1.11 adaptive UX profiles
-       One codebase, three device-specific shells. Auto mode switches between
-       Mobile, Tablet and Desktop based on viewport, touch capability and
-       pointer type. Manual mode can still be selected by the user. */
+       One codebase, two device-specific shells. Auto mode switches between
+       Mobile and PC based on viewport, pointer and touch capability.
+       Desktop Workbench is PC-only by design. */
     .ux-profile-control {
       gap: 8px;
       min-height: 42px;
@@ -2404,6 +2404,257 @@ INDEX_HTML = r"""<!doctype html>
       bottom: calc(64px + var(--mobile-browser-bottom-gap, 0px)) !important;
     }
 
+
+    /* v1.6.12 Rethinking: simple two-shell UX (Mobile + PC)
+       - Tablet is no longer a separate product mode.
+       - Desktop Workbench is PC-only.
+       - File explorer owns the workspace; editor opens as an overlay when needed. */
+    body.ux-tablet {
+      /* Legacy class is kept harmless for old localStorage/cache states. */
+    }
+
+    body.ux-mobile #desktopModeToggle,
+    body.ux-mobile option[value="desktop"] {
+      display: none !important;
+    }
+
+    body.ux-mobile .desktop-layer,
+    body.ux-mobile .desktop-taskbar,
+    body.ux-mobile .desktop-start-menu {
+      display: none !important;
+      pointer-events: none !important;
+    }
+
+    body.ux-mobile.desktop-mode {
+      overflow: auto !important;
+    }
+
+    body.ux-mobile.desktop-mode .tab-panel,
+    body.ux-mobile.desktop-mode .tab-panel.desktop-open,
+    body.ux-mobile.desktop-mode .tab-panel.desktop-maximized {
+      position: static !important;
+      inset: auto !important;
+      width: auto !important;
+      height: auto !important;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    body.ux-desktop:not(.desktop-mode) .layout {
+      grid-template-columns: 260px minmax(0, 1fr);
+      max-width: 100%;
+    }
+
+    body.ux-desktop:not(.desktop-mode) main.content {
+      min-width: 0;
+    }
+
+    body.ux-desktop:not(.desktop-mode) .tab-panel[data-panel="files"].active {
+      height: calc(100dvh - var(--console-height) - 92px);
+      min-height: 560px;
+      overflow: hidden;
+    }
+
+    body.ux-desktop:not(.desktop-mode) .tab-panel[data-panel="files"] .file-manager-grid,
+    body.ux-mobile:not(.desktop-mode) .tab-panel[data-panel="files"] .file-manager-grid,
+    body.ux-desktop.desktop-mode .tab-panel[data-panel="files"] .file-manager-grid {
+      display: grid !important;
+      grid-template-columns: minmax(0, 1fr) !important;
+      gap: 12px !important;
+    }
+
+    body.ux-desktop:not(.desktop-mode) .tab-panel[data-panel="files"] .file-explorer-panel,
+    body.ux-desktop.desktop-mode .tab-panel[data-panel="files"] .file-explorer-panel {
+      min-height: 0;
+      height: calc(100dvh - var(--console-height) - 278px);
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    body.ux-desktop.desktop-mode .tab-panel[data-panel="files"] .file-explorer-panel {
+      height: calc(100% - 110px);
+      min-height: 460px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .tab-panel[data-panel="files"] .file-explorer-panel {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      overflow: hidden;
+    }
+
+    body.ux-desktop .split-resizer,
+    body.ux-mobile .split-resizer {
+      display: none !important;
+    }
+
+    body.ux-desktop .file-table-wrap,
+    body.ux-mobile .file-table-wrap {
+      min-height: 0 !important;
+      height: 100% !important;
+      max-height: none !important;
+      overflow: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body.ux-mobile .file-table-wrap {
+      height: min(62dvh, calc(100dvh - var(--console-height) - 330px)) !important;
+      min-height: 260px !important;
+    }
+
+    body.ux-mobile .file-row-actions {
+      position: relative;
+      display: flex !important;
+      justify-content: stretch;
+      width: 100%;
+    }
+
+    body.ux-mobile .file-action-toggle,
+    body.ux-desktop .file-action-toggle {
+      width: 100% !important;
+      justify-content: center;
+    }
+
+    body.ux-mobile .file-action-menu,
+    body.ux-desktop .file-action-menu {
+      max-height: min(360px, 60dvh);
+      overflow: auto;
+    }
+
+    body.ux-mobile .file-table tr {
+      padding: 9px !important;
+      margin-bottom: 8px !important;
+    }
+
+    body.ux-mobile .file-table td[data-label]::before {
+      margin-bottom: 1px !important;
+      font-size: 10px !important;
+      opacity: .82;
+    }
+
+    body.ux-mobile .file-name-button {
+      min-height: 34px !important;
+      padding: 5px 0 !important;
+      font-size: 14px !important;
+    }
+
+    body.ux-mobile .file-toolbar {
+      gap: 7px !important;
+    }
+
+    body.ux-mobile .file-toolbar button,
+    body.ux-mobile .file-toolbar input,
+    body.ux-mobile .file-toolbar select {
+      min-height: 42px !important;
+    }
+
+    .editor-panel:not(.editor-open):not(.editor-fullscreen) {
+      display: none !important;
+    }
+
+    .editor-panel.editor-open,
+    .editor-panel.editor-fullscreen {
+      position: fixed !important;
+      z-index: 85 !important;
+      inset: 18px 18px calc(var(--console-height) + 18px) 18px !important;
+      display: grid !important;
+      grid-template-rows: auto auto auto auto minmax(0, 1fr) auto !important;
+      overflow: hidden !important;
+      background: rgba(15, 23, 42, .985) !important;
+      border: 1px solid rgba(96, 165, 250, .35) !important;
+      box-shadow: 0 30px 100px rgba(0, 0, 0, .72) !important;
+      backdrop-filter: blur(16px) !important;
+    }
+
+    body.console-hidden .editor-panel.editor-open,
+    body.console-hidden .editor-panel.editor-fullscreen {
+      inset-bottom: 18px !important;
+    }
+
+    .editor-panel.editor-open::before,
+    .editor-panel.editor-fullscreen::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: rgba(2, 6, 23, .68);
+      pointer-events: none;
+    }
+
+    .editor-panel.editor-open .card-header,
+    .editor-panel.editor-fullscreen .card-header {
+      margin-bottom: 8px;
+    }
+
+    .editor-panel.editor-open .editor-actions,
+    .editor-panel.editor-fullscreen .editor-actions {
+      display: flex !important;
+      flex-wrap: wrap;
+      gap: 8px;
+      position: static !important;
+      padding: 8px 0 !important;
+    }
+
+    .editor-panel.editor-open .editor-box,
+    .editor-panel.editor-fullscreen .editor-box {
+      min-height: 0 !important;
+      height: 100% !important;
+      resize: none !important;
+    }
+
+    body.ux-mobile .editor-panel.editor-open,
+    body.ux-mobile .editor-panel.editor-fullscreen {
+      inset: 8px 8px calc(var(--console-height) + env(safe-area-inset-bottom, 0px) + 8px) 8px !important;
+      border-radius: 16px !important;
+      overflow: auto !important;
+    }
+
+    body.ux-mobile.console-collapsed .editor-panel.editor-open,
+    body.ux-mobile.console-collapsed .editor-panel.editor-fullscreen,
+    body.ux-mobile.console-hidden .editor-panel.editor-open,
+    body.ux-mobile.console-hidden .editor-panel.editor-fullscreen {
+      inset-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    body.ux-mobile .editor-panel.editor-open .editor-actions,
+    body.ux-mobile .editor-panel.editor-fullscreen .editor-actions {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    body.ux-mobile .editor-panel.editor-open .editor-actions button,
+    body.ux-mobile .editor-panel.editor-fullscreen .editor-actions button {
+      width: 100% !important;
+      min-height: 40px !important;
+    }
+
+    body.ux-mobile .editor-panel.editor-open .editor-box,
+    body.ux-mobile .editor-panel.editor-fullscreen .editor-box {
+      min-height: 46dvh !important;
+    }
+
+    body.ux-mobile .console-dock {
+      bottom: max(0px, var(--mobile-browser-bottom-gap, 0px)) !important;
+    }
+
+    body.ux-mobile.console-collapsed .console-dock,
+    body.ux-mobile.console-hidden .console-dock {
+      height: calc(74px + env(safe-area-inset-bottom, 0px)) !important;
+      transform: none !important;
+    }
+
+    body.ux-mobile.console-collapsed .console-inner,
+    body.ux-mobile.console-hidden .console-inner {
+      padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    body.ux-mobile.console-collapsed #consoleCollapse,
+    body.ux-mobile.console-hidden #consoleCollapse {
+      min-height: 42px !important;
+      padding: 9px 14px !important;
+    }
+
   </style>
 </head>
 <body>
@@ -2452,7 +2703,7 @@ INDEX_HTML = r"""<!doctype html>
           <div class="hero-actions">
             <button data-action-id="list">Spieler anzeigen</button>
             <button data-action-id="say">Nachricht</button>
-            <button type="button" class="primary" id="desktopModeToggle">Desktop-Modus</button><label class="ux-profile-control status">Darstellung <select id="uxProfileSelect" aria-label="Darstellung"><option value="auto">Auto</option><option value="mobile">Mobil</option><option value="tablet">Tablet</option><option value="desktop">Desktop</option></select></label><button type="button" class="soft" id="resetWorkbenchLayout">Layout zurücksetzen</button>
+            <button type="button" class="primary" id="desktopModeToggle">PC-Workbench</button><label class="ux-profile-control status">Darstellung <select id="uxProfileSelect" aria-label="Darstellung"><option value="auto">Auto</option><option value="mobile">Mobil</option><option value="desktop">PC</option></select></label><button type="button" class="soft" id="resetWorkbenchLayout">Layout zurücksetzen</button>
           </div>
         </div>
       </section>
@@ -3269,12 +3520,28 @@ INDEX_HTML = r"""<!doctype html>
         alert(err.message);
       }
     }
+    function openEditorOverlay() {
+      if (!editorPanel) return;
+      editorPanel.classList.add('editor-open');
+      editorPanel.classList.remove('editor-fullscreen');
+      if (editorFullscreen) editorFullscreen.textContent = 'Vollbild';
+      if (fileCloseEditor) fileCloseEditor.textContent = 'Schließen';
+      if (document.body.classList.contains('ux-mobile') && !document.body.classList.contains('console-collapsed')) setConsoleMode('collapsed');
+      window.setTimeout(() => fileEditor?.focus({ preventScroll: true }), 80);
+    }
+
+    function closeEditorOverlay() {
+      if (!editorPanel) return;
+      editorPanel.classList.remove('editor-open', 'editor-fullscreen');
+      if (editorFullscreen) editorFullscreen.textContent = 'Vollbild';
+    }
+
     function setEditorPreviewMode(previewOnly, note = '') {
       if (editorPanel) editorPanel.classList.toggle('preview-only', !!previewOnly);
       if (fileEditor) fileEditor.readOnly = !!previewOnly;
       if (fileSave) fileSave.hidden = !!previewOnly;
-      if (fileCloseEditor) fileCloseEditor.textContent = previewOnly ? 'Vorschau leeren' : 'Editor leeren';
-      if (editorFullscreen) editorFullscreen.textContent = previewOnly ? 'Vorschau Vollbild' : 'Editor Vollbild';
+      if (fileCloseEditor) fileCloseEditor.textContent = 'Schließen';
+      if (editorFullscreen) editorFullscreen.textContent = 'Vollbild';
       if (editorReadonlyNote) {
         editorReadonlyNote.hidden = !previewOnly;
         editorReadonlyNote.textContent = note || 'Schreibgeschützte Vorschau. Zum Bearbeiten Datei aus dem Papierkorb wiederherstellen oder Web-Schutz entsperren.';
@@ -3291,6 +3558,7 @@ INDEX_HTML = r"""<!doctype html>
         editorMeta.textContent = formatBytes(data.size) + ' · geändert: ' + formatUnixTime(data.modified) + (data.json ? ' · JSON-Prüfung aktiv' : '') + (previewOnly ? ' · Papierkorb-Vorschau, nicht schreibbar' : '');
         fileEditor.value = data.content || '';
         setEditorPreviewMode(previewOnly, data.root === 'trash' ? 'Papierkorb-Vorschau: Wiederherstellen, um die Datei wieder bearbeitbar zu machen.' : (webWriteLocked ? 'Web-Schutz aktiv: Diese Datei wird nur als Vorschau geöffnet.' : ''));
+        openEditorOverlay();
         setFilesStatus(previewOnly ? 'Vorschau geöffnet' : 'Datei geöffnet', '');
       } catch (err) {
         setFilesStatus('Fehler', 'warn');
@@ -3316,7 +3584,7 @@ INDEX_HTML = r"""<!doctype html>
       }
     }
 
-    function clearEditor() { currentEditorFile = null; editorPath.textContent = 'Keine Datei geöffnet'; editorMeta.textContent = 'Bereit'; fileEditor.value = ''; setEditorPreviewMode(false); }
+    function clearEditor() { currentEditorFile = null; editorPath.textContent = 'Keine Datei geöffnet'; editorMeta.textContent = 'Bereit'; fileEditor.value = ''; setEditorPreviewMode(false); closeEditorOverlay(); }
     async function uploadFiles(files) { if (!ensureWriteAllowed('Upload')) return; files = Array.from(files || []); if (!files.length) return; for (const file of files) { try { setFilesStatus('Upload: ' + file.name, 'warn'); let data; try { data = await uploadFileBinary(file); } catch (binaryErr) { if (file.size > MAX_JSON_UPLOAD_SIZE) throw binaryErr; appendLine('[WinoMC Dateien] Binary Upload fehlgeschlagen, nutze JSON-Fallback: ' + binaryErr.message, 'error'); data = await uploadFileJson(file); } appendLine('[WinoMC Dateien] Hochgeladen: ' + data.path, 'ok'); } catch (err) { appendLine('[WinoMC Dateien] Upload fehlgeschlagen: ' + file.name + ' · ' + err.message, 'error'); alert('Upload fehlgeschlagen: ' + file.name + '\n\n' + err.message); } } setFilesStatus('Upload fertig', ''); await loadFileList(currentFilePath); }
     async function uploadFileBinary(file) { const res = await fetch(apiUrl('/api/files/upload', { root: currentFileRoot, path: currentFilePath, filename: file.name, overwrite: 'false' }), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-WinoMC-Upload-Size': String(file.size), 'X-WinoMC-Filename': encodeURIComponent(file.name) }, body: file }); const data = await res.json(); if (!res.ok || !data.ok) throw new Error(data.error || res.statusText); return data; }
     function readFileAsBase64(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result || '').split(',', 2)[1] || ''); reader.onerror = () => reject(reader.error || new Error('Datei konnte nicht gelesen werden.')); reader.readAsDataURL(file); }); }
@@ -3696,8 +3964,9 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function toggleEditorFullscreen() {
+      editorPanel.classList.add('editor-open');
       editorPanel.classList.toggle('editor-fullscreen');
-      if (editorFullscreen) editorFullscreen.textContent = editorPanel.classList.contains('editor-fullscreen') ? 'Vollbild schließen' : 'Editor Vollbild';
+      if (editorFullscreen) editorFullscreen.textContent = editorPanel.classList.contains('editor-fullscreen') ? 'Normal' : 'Vollbild';
     }
 
     function cardIdFor(card, index) {
@@ -4083,6 +4352,13 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function enterDesktopModeFromUser() {
+      if (isLikelyMobileViewport()) {
+        localStorage.setItem(STORE_UX_PROFILE, 'auto');
+        localStorage.setItem(STORE_DESKTOP_MODE, 'false');
+        applyAdaptiveUx();
+        appendLine('[WinoMC UX] PC-Workbench ist auf Mobilgeräten nicht verfügbar.', 'error');
+        return;
+      }
       localStorage.setItem(STORE_UX_PROFILE, 'desktop');
       localStorage.setItem(STORE_DESKTOP_MODE, 'true');
       document.body.classList.remove('ux-auto', 'ux-mobile', 'ux-tablet');
@@ -4114,7 +4390,7 @@ INDEX_HTML = r"""<!doctype html>
       localStorage.setItem(STORE_DESKTOP_MODE, enabled ? 'true' : 'false');
       if (!options.adaptive) localStorage.setItem(STORE_UX_PROFILE, enabled ? 'desktop' : 'auto');
       if (uxProfileSelect) uxProfileSelect.value = localStorage.getItem(STORE_UX_PROFILE) || 'auto';
-      if (desktopModeToggle) desktopModeToggle.textContent = enabled ? 'Klassische Ansicht' : 'Desktop-Modus';
+      if (desktopModeToggle) desktopModeToggle.textContent = enabled ? 'Klassische Ansicht' : 'PC-Workbench';
       setConsoleMode(localStorage.getItem(STORE_CONSOLE_SIZE) || 'normal');
       if (enabled) {
         renderDesktopStartMenu();
@@ -4132,7 +4408,7 @@ INDEX_HTML = r"""<!doctype html>
 
     function toggleDesktopMode() {
       if (document.body.classList.contains('desktop-mode')) {
-        localStorage.setItem(STORE_UX_PROFILE, 'auto');
+        localStorage.setItem(STORE_UX_PROFILE, 'desktop');
         forceClassicShellAfterDesktop();
         if (uxProfileSelect) uxProfileSelect.value = 'auto';
         window.setTimeout(() => {
@@ -4160,25 +4436,25 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function sanitizeUxProfile(value) {
-      return ['auto', 'mobile', 'tablet', 'desktop'].includes(value) ? value : 'auto';
+      // v1.6.12 keeps the product simple: Mobile UX and PC UX only.
+      // Older cached values such as "tablet" are normalized to Auto.
+      return ['auto', 'mobile', 'desktop'].includes(value) ? value : 'auto';
+    }
+
+    function isLikelyMobileViewport() {
+      const width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      const height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+      const coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      const finePointer = window.matchMedia && (window.matchMedia('(pointer: fine)').matches || window.matchMedia('(any-pointer: fine)').matches);
+      const touchPoints = Number(navigator.maxTouchPoints || navigator.msMaxTouchPoints || 0);
+      const userAgent = String(navigator.userAgent || '').toLowerCase();
+      const handheldUA = /iphone|ipod|android.*mobile|windows phone/.test(userAgent);
+      const portrait = height >= width;
+      return handheldUA || width <= 820 || (coarsePointer && !finePointer && portrait && width <= 980) || (touchPoints > 0 && width <= 760);
     }
 
     function detectUxProfile() {
-      const width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
-      const height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
-      const finePointer = window.matchMedia && (window.matchMedia('(pointer: fine)').matches || window.matchMedia('(any-pointer: fine)').matches);
-      const coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-      const noHover = window.matchMedia && window.matchMedia('(hover: none)').matches;
-      const touchPoints = Number(navigator.maxTouchPoints || navigator.msMaxTouchPoints || 0);
-      const touchDevice = coarsePointer || noHover || touchPoints > 0;
-      const touchOnly = touchDevice && !finePointer;
-      const portrait = height >= width;
-
-      // Desktop browsers with touch support must not be classified as tablets.
-      if (width >= 1280 || (finePointer && width >= 1100 && height >= 640)) return 'desktop';
-      if (width <= 760 || (touchOnly && portrait && width <= 930) || (touchOnly && height <= 760 && width <= 980)) return 'mobile';
-      if (width <= 1180 || (touchOnly && width <= 1366)) return 'tablet';
-      return 'desktop';
+      return isLikelyMobileViewport() ? 'mobile' : 'desktop';
     }
 
     function currentUxPreference() {
@@ -4186,52 +4462,89 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function updateUxProfileControl(preference, activeProfile) {
-      if (uxProfileSelect) uxProfileSelect.value = preference;
+      if (uxProfileSelect) {
+        uxProfileSelect.value = preference === 'tablet' ? 'auto' : preference;
+        Array.from(uxProfileSelect.options).forEach(option => {
+          if (option.value === 'desktop') {
+            option.disabled = activeProfile === 'mobile';
+            option.hidden = activeProfile === 'mobile';
+          }
+          if (option.value === 'tablet') {
+            option.disabled = true;
+            option.hidden = true;
+          }
+        });
+      }
       document.body.dataset.uxPreference = preference;
       document.body.dataset.uxProfile = activeProfile;
-      if (appTitle) appTitle.textContent = activeProfile === 'mobile' ? 'WinoMC Mobile' : (activeProfile === 'tablet' ? 'WinoMC Tablet' : 'WinoMC Desktop Workbench');
-      if (desktopModeToggle) desktopModeToggle.textContent = document.body.classList.contains('desktop-mode') ? 'Klassische Ansicht' : 'Desktop-Modus';
+      if (appTitle) appTitle.textContent = activeProfile === 'mobile' ? 'WinoMC Mobile' : 'WinoMC PC Workbench';
+      if (desktopModeToggle) {
+        const mobile = activeProfile === 'mobile';
+        desktopModeToggle.hidden = mobile;
+        desktopModeToggle.disabled = mobile;
+        desktopModeToggle.textContent = document.body.classList.contains('desktop-mode') ? 'Klassische Ansicht' : 'PC-Workbench';
+      }
     }
 
     function applyAdaptiveUx() {
-      const preference = currentUxPreference();
-      const activeProfile = preference === 'auto' ? detectUxProfile() : preference;
+      let preference = currentUxPreference();
+      const detectedProfile = detectUxProfile();
+      let activeProfile = preference === 'auto' ? detectedProfile : preference;
+
+      // Desktop Workbench is intentionally PC-only. Mobile devices always use the mobile shell.
+      if (detectedProfile === 'mobile' && activeProfile === 'desktop') {
+        preference = 'auto';
+        activeProfile = 'mobile';
+        localStorage.setItem(STORE_UX_PROFILE, 'auto');
+        localStorage.setItem(STORE_DESKTOP_MODE, 'false');
+      }
+
       document.body.classList.toggle('ux-auto', preference === 'auto');
       document.body.classList.toggle('ux-mobile', activeProfile === 'mobile');
-      document.body.classList.toggle('ux-tablet', activeProfile === 'tablet');
+      document.body.classList.toggle('ux-tablet', false);
       document.body.classList.toggle('ux-desktop', activeProfile === 'desktop');
       updateUxProfileControl(preference, activeProfile);
       updateVisualViewportInsets();
 
-      if (activeProfile === 'mobile' || activeProfile === 'tablet') {
+      if (activeProfile === 'mobile') {
         document.body.classList.remove('sidebar-collapsed');
+        if (document.body.classList.contains('desktop-mode')) setDesktopMode(false, { adaptive: true, mobileGuard: true });
+        clearDesktopStateForClassic();
+        document.body.classList.remove('has-maximized-card');
+        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('desktop-open', 'desktop-minimized', 'desktop-maximized'));
+        document.querySelectorAll('.card').forEach(card => card.classList.remove('maximized'));
+        return;
       }
 
-      const desktopAllowed = preference === 'desktop' || localStorage.getItem(STORE_DESKTOP_MODE) !== 'false';
-      if (activeProfile === 'desktop' && desktopAllowed) {
+      const desktopRequested = localStorage.getItem(STORE_DESKTOP_MODE) === 'true';
+      if (activeProfile === 'desktop' && desktopRequested) {
         if (!document.body.classList.contains('desktop-mode')) setDesktopMode(true, { adaptive: true });
-      } else {
-        if (document.body.classList.contains('desktop-mode')) setDesktopMode(false, { adaptive: true });
-        clearDesktopStateForClassic();
-        // The collapsed desktop rail must never leak into touch profiles or the classic shell.
-        if (activeProfile === 'mobile' || activeProfile === 'tablet' || !desktopAllowed) {
-          document.body.classList.remove('has-maximized-card');
-          document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('desktop-open', 'desktop-minimized', 'desktop-maximized'));
-          document.querySelectorAll('.card').forEach(card => card.classList.remove('maximized'));
-        }
+      } else if (document.body.classList.contains('desktop-mode')) {
+        setDesktopMode(false, { adaptive: true });
       }
-      if (desktopModeToggle) desktopModeToggle.textContent = document.body.classList.contains('desktop-mode') ? 'Klassische Ansicht' : 'Desktop-Modus';
+      if (desktopModeToggle) desktopModeToggle.textContent = document.body.classList.contains('desktop-mode') ? 'Klassische Ansicht' : 'PC-Workbench';
     }
 
     function setUxProfile(profile) {
       const next = sanitizeUxProfile(profile);
+      if (next === 'desktop' && isLikelyMobileViewport()) {
+        localStorage.setItem(STORE_UX_PROFILE, 'auto');
+        localStorage.setItem(STORE_DESKTOP_MODE, 'false');
+        forceClassicShellAfterDesktop();
+        applyAdaptiveUx();
+        appendLine('[WinoMC UX] PC-Workbench ist auf Mobilgeräten deaktiviert.', 'error');
+        return;
+      }
       if (next === 'desktop') {
-        enterDesktopModeFromUser();
+        localStorage.setItem(STORE_UX_PROFILE, 'desktop');
+        localStorage.setItem(STORE_DESKTOP_MODE, 'false');
+        if (document.body.classList.contains('desktop-mode')) forceClassicShellAfterDesktop();
+        applyAdaptiveUx();
         return;
       }
       localStorage.setItem(STORE_UX_PROFILE, next);
-      if (next === 'mobile' || next === 'tablet') localStorage.setItem(STORE_DESKTOP_MODE, 'false');
-      if (next !== 'desktop' && document.body.classList.contains('desktop-mode')) forceClassicShellAfterDesktop();
+      if (next === 'mobile') localStorage.setItem(STORE_DESKTOP_MODE, 'false');
+      if (document.body.classList.contains('desktop-mode')) forceClassicShellAfterDesktop();
       applyAdaptiveUx();
     }
 
@@ -5433,7 +5746,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.11.4"
+    server_version = "WinoMCConsole/1.6.12"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")

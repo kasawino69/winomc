@@ -5,6 +5,52 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.12
+
+#### Webinterface / Rethinking
+
+* Webinterface-UX neu ausgerichtet nach dem Prinzip: **Keep it simple, modern UX, weniger Modi**.
+* Tablet wurde als eigener Produktmodus entfernt.
+* Es gibt jetzt nur noch zwei Zieloberflächen:
+  * **Mobile UX** für Smartphones und kleine Touch-Displays
+  * **PC UX** für Desktop-Browser, Laptops und große Displays
+* Alte gespeicherte Tablet-Zustände werden automatisch auf `Auto` normalisiert.
+* Die automatische Erkennung unterscheidet nicht mehr zwischen Mobile, Tablet und Desktop, sondern nur noch zwischen Mobile und PC.
+
+#### Mobile UX
+
+* PC-Workbench/Desktop-Modus ist auf Mobilgeräten deaktiviert.
+* Mobile Geräte bleiben konsequent in der mobilen Oberfläche.
+* Alte Desktop-/Workbench-Zustände aus vorherigen Sitzungen werden auf Mobile automatisch entfernt.
+* Die Live Console bleibt im eingeklappten Zustand besser erreichbar und verschwindet nicht mehr unter der Browser-/iOS-Bedienleiste.
+* Der mobile Dateimanager ist kompakter:
+  * weniger hohe Dateikarten
+  * kompaktere Metadaten
+  * Aktionsmenü statt klobiger Button-Blöcke
+
+#### PC UX
+
+* PC-Browser werden nicht mehr fälschlich als Tablet behandelt.
+* PC-Workbench bleibt PC-only und wird nicht mehr auf Mobile angeboten.
+* Der Button wurde von `Desktop-Modus` auf `PC-Workbench` umbenannt, damit klarer ist, dass dieser Modus nur für große Displays gedacht ist.
+* Klassische PC-Ansicht und PC-Workbench werden sauberer getrennt.
+
+#### Dateimanager Re-Design
+
+* Dateiexplorer und Editor wurden entkoppelt.
+* Der Dateiexplorer nutzt jetzt den verfügbaren Arbeitsbereich deutlich besser.
+* Der Editor ist nicht mehr dauerhaft rechts neben dem Explorer sichtbar.
+* Beim Bearbeiten oder Vorschauen einer Datei öffnet sich der Editor als Overlay/Vollbild-Panel ohne Seitenwechsel und ohne Refresh.
+* Dadurch bleibt der Explorer übersichtlicher und die Dateiliste bekommt deutlich mehr Platz.
+* Das bestehende Aktionen-Menü pro Datei bleibt erhalten und wird auf Mobile/PC einheitlicher dargestellt.
+
+#### Maintenance / Cleanup
+
+* Adaptive UX-Logik vereinfacht.
+* Alte `tablet`-Preference wird nicht mehr als gültige Auswahl akzeptiert.
+* UI-State-Wechsel zwischen Mobile, PC klassisch und PC-Workbench wurden robuster gemacht.
+* Version auf `WinoMCConsole/1.6.12` angehoben.
+
 ### 1.6.11.4
 
 #### UX / Adaptive Layout
