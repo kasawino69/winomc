@@ -5,6 +5,45 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.11.2
+
+#### UX / Responsive Layout
+
+* Fehler behoben, bei dem die klassische Ansicht am PC nach aktivem Desktop-Modus nicht mehr zuverlässig geöffnet wurde.
+* Wechsel von Desktop-Modus zurück zur klassischen Ansicht stabilisiert, ohne dass ein Seitenrefresh nötig ist.
+* Verwaiste Desktop-Zustände werden beim Wechsel in die klassische Ansicht nun konsequent entfernt:
+  * Desktop-Fensterklassen
+  * Desktop-Taskbar/Layer
+  * maximierte Karten-Overlays
+  * blockierende Pointer-/Overlay-Zustände
+* Mobile Bedienbarkeit nach dem Wechsel Desktop → Klassisch verbessert.
+* Klassische Ansicht bleibt im Auto-Modus möglich, auch wenn der PC grundsätzlich als Desktop-Gerät erkannt wird.
+
+#### Dateimanager
+
+* Dateiaktionen pro Datei/Ordner in ein kompaktes Aktionsmenü zusammengefasst.
+* Die vorher sehr klobigen Aktionsbuttons werden nicht mehr dauerhaft untereinander angezeigt.
+* Aktionsmenü funktioniert in Mobile-, Tablet-, klassischer PC- und Desktop-Ansicht.
+* Bestehende Aktionen bleiben erhalten:
+  * Öffnen / Download / Editor
+  * ZIP / Export
+  * Verschieben
+  * MD5-Prüfung
+  * Entpacken
+  * Löschen / Wiederherstellen
+
+#### Mobile UX
+
+* Dateiaktionen auf iPhone und kleinen Displays platzsparender dargestellt.
+* Schaltflächen im Dateimanager nehmen deutlich weniger permanenten Platz ein.
+* Mobile Ansicht bleibt nach Layoutwechseln besser bedienbar.
+
+#### Maintenance
+
+* Version auf `WinoMCConsole/1.6.11.2` angehoben.
+* Bestehende CodeQL-/Security-Umbauten bleiben erhalten.
+* Datei syntaktisch geprüft.
+
 ### 1.6.11.1
 
 #### UX / Mobile

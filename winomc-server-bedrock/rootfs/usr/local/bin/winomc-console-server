@@ -71,7 +71,7 @@ INDEX_HTML = r"""<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WinoMC Adaptive Workbench 1.6.11.1</title>
+  <title>WinoMC Adaptive Workbench 1.6.11.2</title>
   <style>
     :root {
       color-scheme: dark;
@@ -1964,7 +1964,7 @@ INDEX_HTML = r"""<!doctype html>
     }
 
 
-    /* v1.16.11.1 Mobile/Tablet/Desktop UX hardening
+    /* v1.6.11.2 Mobile/Tablet/Desktop UX hardening
        Fixes stale desktop state after switching back to classic mode and makes
        the mobile file explorer usable on small touch screens. */
     body:not(.desktop-mode) .desktop-layer,
@@ -2089,6 +2089,108 @@ INDEX_HTML = r"""<!doctype html>
     body.ux-mobile:not(.desktop-mode) .breadcrumb button {
       font-size: 12px;
       padding: 7px 9px;
+    }
+
+
+
+    /* v1.6.11.2 adaptive shell stability + compact file action menu
+       Keeps the classic shell interactive after leaving desktop mode and avoids
+       oversized per-file action button stacks on mobile/tablet/desktop. */
+    body:not(.desktop-mode) .desktop-layer,
+    body:not(.desktop-mode) .desktop-taskbar,
+    body:not(.desktop-mode) .desktop-start-menu,
+    body:not(.desktop-mode) .desktop-window-bar {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      opacity: 0 !important;
+    }
+
+    body:not(.desktop-mode),
+    body:not(.desktop-mode) .layout,
+    body:not(.desktop-mode) .content,
+    body:not(.desktop-mode) .tab-panel.active,
+    body:not(.desktop-mode) nav,
+    body:not(.desktop-mode) main {
+      pointer-events: auto !important;
+    }
+
+    body:not(.desktop-mode) .tab-panel {
+      position: static !important;
+      transform: none !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      max-width: none !important;
+      max-height: none !important;
+    }
+
+    .file-row-actions {
+      position: relative;
+      display: inline-grid !important;
+      width: auto;
+      min-width: 0;
+      gap: 6px;
+      justify-items: end;
+      overflow: visible !important;
+    }
+
+    .file-action-toggle {
+      min-width: 108px;
+      white-space: nowrap;
+    }
+
+    .file-action-menu {
+      display: none;
+      grid-template-columns: 1fr;
+      gap: 6px;
+      width: min(220px, 100%);
+      margin-top: 6px;
+      padding: 8px;
+      border: 1px solid rgba(51, 65, 85, .82);
+      border-radius: 12px;
+      background: rgba(15, 23, 42, .96);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, .25);
+    }
+
+    .file-row-actions.open .file-action-menu {
+      display: grid;
+    }
+
+    .file-action-menu button {
+      width: 100% !important;
+      min-width: 0 !important;
+      justify-content: flex-start;
+      text-align: left;
+      padding: 8px 10px !important;
+      min-height: 36px !important;
+      border-radius: 9px !important;
+      font-size: 12px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-row-actions,
+    body.ux-tablet:not(.desktop-mode) .file-row-actions {
+      width: 100%;
+      justify-items: stretch;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-action-toggle,
+    body.ux-tablet:not(.desktop-mode) .file-action-toggle {
+      width: 100% !important;
+      min-height: 36px !important;
+      padding: 7px 10px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-action-menu,
+    body.ux-tablet:not(.desktop-mode) .file-action-menu {
+      width: 100%;
+      margin-top: 6px;
+      padding: 7px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-action-menu button {
+      min-height: 34px !important;
+      padding: 7px 9px !important;
+      font-size: 12px !important;
     }
 
   </style>
@@ -2698,6 +2800,33 @@ INDEX_HTML = r"""<!doctype html>
     function normalizeUiPath(path) { path = String(path || '/').replaceAll('\\', '/'); if (!path.startsWith('/')) path = '/' + path; path = path.replace(/\/+/g, '/'); return path || '/'; }
     function parentUiPath(path) { path = normalizeUiPath(path); if (path === '/') return '/'; const parts = path.split('/').filter(Boolean); parts.pop(); return '/' + parts.join('/'); }
     function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;'); }
+    function closeFileActionMenus(exceptMenu = null) {
+      document.querySelectorAll('.file-row-actions.open').forEach(menu => {
+        if (menu !== exceptMenu) menu.classList.remove('open');
+      });
+    }
+
+    function compactFileRowActions(actions) {
+      if (!actions || actions.dataset.compacted === 'true') return;
+      const buttons = Array.from(actions.children).filter(child => child.tagName === 'BUTTON');
+      if (!buttons.length) return;
+      actions.dataset.compacted = 'true';
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'file-action-toggle soft';
+      toggle.textContent = 'Aktionen ▾';
+      toggle.setAttribute('aria-haspopup', 'true');
+      toggle.setAttribute('aria-expanded', 'false');
+      const menu = document.createElement('div');
+      menu.className = 'file-action-menu';
+      buttons.forEach(button => {
+        button.addEventListener('click', () => window.setTimeout(() => closeFileActionMenus(), 0));
+        menu.appendChild(button);
+      });
+      actions.innerHTML = '';
+      actions.append(toggle, menu);
+    }
+
     function activateTab(tab) { if (document.body.classList.contains('desktop-mode')) { openDesktopWindow(tab); return; } document.body.classList.toggle('hide-hero', tab !== 'overview'); document.querySelectorAll('[data-tab]').forEach(item => item.classList.toggle('active', item.dataset.tab === tab)); document.querySelectorAll('[data-panel]').forEach(panel => panel.classList.toggle('active', panel.dataset.panel === tab)); if (document.body.classList.contains('sidebar-collapsed')) requestAnimationFrame(scrollActiveSidebarIconIntoView); if (tab === 'files') initFileManager(); if (tab === 'overview' || tab === 'network') loadStatus(); }
     function openRoot(root, path = '/') { activateTab('files'); setTimeout(async () => { await initFileManager(); currentFileRoot = root; fileRootSelect.value = root; await loadFileList(path); }, 0); }
 
@@ -2842,6 +2971,7 @@ INDEX_HTML = r"""<!doctype html>
           actions.appendChild(del);
         }
 
+        compactFileRowActions(actions);
         actionsTd.appendChild(actions);
         nameTd.dataset.label = 'Name';
         typeTd.dataset.label = 'Typ';
@@ -3035,7 +3165,7 @@ INDEX_HTML = r"""<!doctype html>
     async function runSafeWorldExport() { if (!ensureWriteAllowed('Sicherer Welt-Export')) return; const defaultWorld = latestStatus && latestStatus.env && latestStatus.env.LEVEL_NAME ? '/' + latestStatus.env.LEVEL_NAME : '/world'; const worldPath = window.prompt('Welche Welt sicher exportieren?', defaultWorld); if (!worldPath) return; if (!window.confirm('Sicheren Welt-Export starten?\n\nAblauf: save hold → save query → ZIP → save resume')) return; try { setFilesStatus('Welt-Export läuft...', 'warn'); const data = await postJson('/api/worlds/export-safe', { path: worldPath, save_to_export: true }); appendLine('[WinoMC Dateien] Sicherer Welt-Export erstellt: ' + data.filename, 'ok'); setFilesStatus('Welt exportiert', ''); } catch (err) { setFilesStatus('Fehler', 'warn'); appendLine('[WinoMC Dateien] Welt-Export fehlgeschlagen: ' + err.message, 'error'); alert(err.message); } }
 
     form.addEventListener('submit', event => { event.preventDefault(); sendCommand(input.value); });
-    document.addEventListener('click', event => { const actionBtn = event.target.closest('[data-action-id]'); if (actionBtn) { runAction(ACTION_BY_ID[actionBtn.dataset.actionId]); return; } const jump = event.target.closest('[data-jump-tab]'); if (jump) { activateTab(jump.dataset.jumpTab); return; } const openRootBtn = event.target.closest('[data-open-root]'); if (openRootBtn) { openRoot(openRootBtn.dataset.openRoot, '/'); return; } });
+    document.addEventListener('click', event => { const fileMenuToggle = event.target.closest('.file-action-toggle'); if (fileMenuToggle) { const wrapper = fileMenuToggle.closest('.file-row-actions'); const willOpen = !wrapper.classList.contains('open'); closeFileActionMenus(wrapper); wrapper.classList.toggle('open', willOpen); fileMenuToggle.setAttribute('aria-expanded', willOpen ? 'true' : 'false'); event.preventDefault(); return; } if (!event.target.closest('.file-row-actions')) closeFileActionMenus(); const actionBtn = event.target.closest('[data-action-id]'); if (actionBtn) { runAction(ACTION_BY_ID[actionBtn.dataset.actionId]); return; } const jump = event.target.closest('[data-jump-tab]'); if (jump) { activateTab(jump.dataset.jumpTab); return; } const openRootBtn = event.target.closest('[data-open-root]'); if (openRootBtn) { openRoot(openRootBtn.dataset.openRoot, '/'); return; } });
     document.querySelectorAll('[data-tab]').forEach(button => button.addEventListener('click', () => activateTab(button.dataset.tab)));
     document.querySelectorAll('[data-console-size]').forEach(button => button.addEventListener('click', () => applyConsoleSize(button.dataset.consoleSize)));
     sidebarToggle.addEventListener('click', toggleSidebar);
@@ -3687,6 +3817,8 @@ INDEX_HTML = r"""<!doctype html>
 
     function clearDesktopStateForClassic() {
       desktopStartMenu?.classList.remove('open');
+      if (desktopLayer) desktopLayer.hidden = true;
+      document.querySelectorAll('.desktop-taskbar').forEach(item => item.hidden = true);
       document.body.classList.remove('has-maximized-card');
       document.body.style.overflow = '';
       document.body.style.pointerEvents = '';
@@ -3711,6 +3843,9 @@ INDEX_HTML = r"""<!doctype html>
 
     function setDesktopMode(enabled, options = {}) {
       document.body.classList.toggle('desktop-mode', enabled);
+      if (desktopLayer) desktopLayer.hidden = !enabled;
+      document.querySelectorAll('.desktop-taskbar').forEach(item => item.hidden = !enabled);
+      if (desktopStartMenu) desktopStartMenu.classList.remove('open');
       if (enabled) clearDesktopBlockingOverlays();
       localStorage.setItem(STORE_DESKTOP_MODE, enabled ? 'true' : 'false');
       if (!options.adaptive) localStorage.setItem(STORE_UX_PROFILE, enabled ? 'desktop' : 'auto');
@@ -3732,7 +3867,19 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function toggleDesktopMode() {
-      setUxProfile(document.body.classList.contains('desktop-mode') ? 'auto' : 'desktop');
+      if (document.body.classList.contains('desktop-mode')) {
+        localStorage.setItem(STORE_UX_PROFILE, 'auto');
+        localStorage.setItem(STORE_DESKTOP_MODE, 'false');
+        setDesktopMode(false);
+        if (uxProfileSelect) uxProfileSelect.value = 'auto';
+        window.setTimeout(() => {
+          clearDesktopStateForClassic();
+          activateTab(document.querySelector('.tab-button.active')?.dataset.tab || 'overview');
+        }, 0);
+        return;
+      }
+      localStorage.setItem(STORE_DESKTOP_MODE, 'true');
+      setUxProfile('desktop');
     }
 
     function updateDesktopClock() {
@@ -3779,12 +3926,14 @@ INDEX_HTML = r"""<!doctype html>
       document.body.classList.toggle('ux-desktop', activeProfile === 'desktop');
       updateUxProfileControl(preference, activeProfile);
 
-      if (activeProfile === 'desktop') {
+      const desktopAllowed = preference === 'desktop' || localStorage.getItem(STORE_DESKTOP_MODE) !== 'false';
+      if (activeProfile === 'desktop' && desktopAllowed) {
         if (!document.body.classList.contains('desktop-mode')) setDesktopMode(true, { adaptive: true });
       } else {
         if (document.body.classList.contains('desktop-mode')) setDesktopMode(false, { adaptive: true });
-        // The collapsed desktop rail must never leak into touch profiles.
-        if (activeProfile === 'mobile' || activeProfile === 'tablet') {
+        clearDesktopStateForClassic();
+        // The collapsed desktop rail must never leak into touch profiles or the classic shell.
+        if (activeProfile === 'mobile' || activeProfile === 'tablet' || !desktopAllowed) {
           document.body.classList.remove('has-maximized-card');
           document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('desktop-open', 'desktop-minimized', 'desktop-maximized'));
           document.querySelectorAll('.card').forEach(card => card.classList.remove('maximized'));
@@ -3795,6 +3944,8 @@ INDEX_HTML = r"""<!doctype html>
     function setUxProfile(profile) {
       const next = sanitizeUxProfile(profile);
       localStorage.setItem(STORE_UX_PROFILE, next);
+      if (next === 'desktop') localStorage.setItem(STORE_DESKTOP_MODE, 'true');
+      if (next === 'mobile' || next === 'tablet') localStorage.setItem(STORE_DESKTOP_MODE, 'false');
       applyAdaptiveUx();
     }
 
@@ -4991,7 +5142,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.11.1"
+    server_version = "WinoMCConsole/1.6.11.2"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")
