@@ -2595,7 +2595,7 @@ def log_warning(message):
 
 
 def canonical_path(path):
-    # CodeQL-friendly canonicalization: normalize and resolve symlinks before any path check.
+    # Normalize and resolve symlinks before any path check.
     return os.path.normpath(os.path.realpath(os.path.abspath(str(path or ""))))
 
 
@@ -2630,8 +2630,7 @@ def normalize_rel_path(rel_path):
 
 
 def is_inside_base(base_path, candidate_path):
-    # Keep this deliberately simple and explicit: CodeQL's py/path-injection
-    # understands normalized path + prefix checks better than a custom commonpath helper.
+    # Keep this deliberately simple and explicit: normalized path plus prefix check.
     base_path = canonical_path(base_path)
     candidate_path = canonical_path(candidate_path)
     base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
@@ -3022,7 +3021,7 @@ def mkstemp_root(root_key, parent_path, prefix, suffix=""):
     assert_no_symlink_component(base_path, parent_abs, allow_missing=False)
     if not path_is_dir_root(root_key, parent):
         raise FileNotFoundError("Zielordner existiert nicht.")
-    fd, temp_path = tempfile.mkstemp(prefix=safe_download_name(prefix, ".winomc-"), suffix=safe_download_name(suffix, "") if suffix else "", dir=parent)
+    fd, temp_path = tempfile.mkstemp(prefix=safe_temp_affix(prefix, ".winomc-"), suffix=safe_temp_affix(suffix, "") if suffix else "", dir=parent)
     return fd, assert_safe_path(root_key, temp_path, require_exists=True)
 
 
@@ -3036,7 +3035,7 @@ def mkstemp_internal(base_dir, parent_path, prefix, suffix=""):
     assert_no_symlink_component(base_path, parent_abs, allow_missing=False)
     if not os.path.isdir(parent):
         raise FileNotFoundError("Interner Zielordner existiert nicht.")
-    fd, temp_path = tempfile.mkstemp(prefix=safe_download_name(prefix, ".winomc-"), suffix=safe_download_name(suffix, "") if suffix else "", dir=parent)
+    fd, temp_path = tempfile.mkstemp(prefix=safe_temp_affix(prefix, ".winomc-"), suffix=safe_temp_affix(suffix, "") if suffix else "", dir=parent)
     return fd, assert_safe_internal_path(base_path, temp_path, require_exists=True)
 
 
@@ -3266,6 +3265,14 @@ def safe_download_name(name, fallback="winomc-download"):
     return name or fallback
 
 
+def safe_temp_affix(value, fallback=""):
+    value = str(value or fallback)
+    value = value.replace("/", "_").replace("\\", "_").replace("\x00", "")
+    value = "".join(ch for ch in value if ord(ch) >= 32)
+    value = re.sub(r"[^A-Za-z0-9._-]+", "_", value)
+    return value or fallback
+
+
 def console_settings_paths():
     settings_dir = canonical_path(os.path.join(DATA_DIR, ".winomc"))
     settings_name = safe_download_name(os.path.basename(CONSOLE_SETTINGS_FILE), "web_console_settings.json")
@@ -3431,54 +3438,77 @@ def create_zip_from_paths(root_key, rel_paths, save_to_export=False):
         raise ValueError("Keine Dateien oder Ordner ausgewählt.")
     root_base = allowed_root_base(root_key)
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
-    zip_name = safe_download_name("winomc-%s-%s.zip" % (root_key, timestamp))
+
+    # The physical ZIP target is server-generated. Request data only decides
+    # which already-validated files are copied into the archive.
     if save_to_export:
         export_dir, _ = resolve_safe_path("export", "/")
         makedirs_root("export", export_dir, exist_ok=True)
-        zip_path = assert_safe_path("export", os.path.join(export_dir, zip_name))
+        fd, zip_path = mkstemp_root("export", export_dir, prefix="winomc-export-%s-" % timestamp, suffix=".zip")
+        zip_handle = os.fdopen(fd, "w+b")
         cleanup = False
+        zip_name = safe_download_name(os.path.basename(zip_path), "winomc-export.zip")
     else:
-        fd, zip_path = mkstemp_internal(tempfile.gettempdir(), tempfile.gettempdir(), prefix="winomc-", suffix=".zip")
-        os.close(fd)
+        zip_handle = tempfile.TemporaryFile(mode="w+b")
+        zip_path = None
         cleanup = True
-    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for rel_path in rel_paths:
-            source_path, normalized_rel_path = resolve_safe_path(root_key, rel_path)
-            if not path_exists_root(root_key, source_path):
-                raise FileNotFoundError("Nicht gefunden: %s" % normalized_rel_path)
-            if path_is_link_root(root_key, source_path):
-                continue
-            if not is_inside_base(root_base, source_path):
-                raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
-            source_name = safe_download_name(os.path.basename(source_path.rstrip(os.sep)) or FILE_ROOTS[root_key]["label"], "winomc-files")
-            if path_is_file_root(root_key, source_path):
-                source_abs = os.path.abspath(str(source_path or ""))
-                safe_source = os.path.normpath(os.path.realpath(source_abs))
-                root_prefix = root_base if root_base.endswith(os.sep) else root_base + os.sep
-                if safe_source != root_base and not safe_source.startswith(root_prefix):
-                    raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
-                assert_no_symlink_component(root_base, source_abs, allow_missing=False)
-                archive.write(safe_source, source_name)
-                continue
-            parent_path = os.path.dirname(source_path.rstrip(os.sep))
-            walk_abs = os.path.abspath(str(source_path or ""))
-            safe_walk_root = os.path.normpath(os.path.realpath(walk_abs))
-            root_prefix = root_base if root_base.endswith(os.sep) else root_base + os.sep
-            if safe_walk_root != root_base and not safe_walk_root.startswith(root_prefix):
-                raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
-            assert_no_symlink_component(root_base, walk_abs, allow_missing=False)
-            for current_root, dirs, files in os.walk(safe_walk_root, followlinks=False):
-                dirs[:] = [dirname for dirname in dirs if not os.path.islink(os.path.join(current_root, dirname)) and is_inside_base(root_base, os.path.join(current_root, dirname))]
-                for filename in files:
-                    file_path = os.path.join(current_root, filename)
-                    file_abs = os.path.abspath(str(file_path or ""))
-                    safe_file_path = os.path.normpath(os.path.realpath(file_abs))
-                    if os.path.islink(file_abs) or (safe_file_path != root_base and not safe_file_path.startswith(root_prefix)):
-                        continue
-                    archive_name = os.path.relpath(safe_file_path, parent_path)
-                    archive.write(safe_file_path, archive_name)
-    return {"zip_path": zip_path, "zip_name": zip_name, "cleanup": cleanup, "saved_to_export": save_to_export, "export_path": normalize_rel_path("/" + zip_name) if save_to_export else None}
+        zip_name = safe_download_name("winomc-export-%s.zip" % timestamp, "winomc-export.zip")
 
+    try:
+        with zipfile.ZipFile(zip_handle, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for rel_path in rel_paths:
+                source_path, normalized_rel_path = resolve_safe_path(root_key, rel_path)
+                if not path_exists_root(root_key, source_path):
+                    raise FileNotFoundError("Nicht gefunden: %s" % normalized_rel_path)
+                if path_is_link_root(root_key, source_path):
+                    continue
+                if not is_inside_base(root_base, source_path):
+                    raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+                source_name = safe_download_name(os.path.basename(source_path.rstrip(os.sep)) or FILE_ROOTS[root_key]["label"], "winomc-files")
+                if path_is_file_root(root_key, source_path):
+                    source_abs = os.path.abspath(str(source_path or ""))
+                    safe_source = os.path.normpath(os.path.realpath(source_abs))
+                    root_prefix = root_base if root_base.endswith(os.sep) else root_base + os.sep
+                    if safe_source != root_base and not safe_source.startswith(root_prefix):
+                        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+                    assert_no_symlink_component(root_base, source_abs, allow_missing=False)
+                    archive.write(safe_source, source_name)
+                    continue
+                parent_path = os.path.dirname(source_path.rstrip(os.sep))
+                walk_abs = os.path.abspath(str(source_path or ""))
+                safe_walk_root = os.path.normpath(os.path.realpath(walk_abs))
+                root_prefix = root_base if root_base.endswith(os.sep) else root_base + os.sep
+                if safe_walk_root != root_base and not safe_walk_root.startswith(root_prefix):
+                    raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+                assert_no_symlink_component(root_base, walk_abs, allow_missing=False)
+                for current_root, dirs, files in os.walk(safe_walk_root, followlinks=False):
+                    dirs[:] = [dirname for dirname in dirs if not os.path.islink(os.path.join(current_root, dirname)) and is_inside_base(root_base, os.path.join(current_root, dirname))]
+                    for filename in files:
+                        file_path = os.path.join(current_root, filename)
+                        file_abs = os.path.abspath(str(file_path or ""))
+                        safe_file_path = os.path.normpath(os.path.realpath(file_abs))
+                        if os.path.islink(file_abs) or (safe_file_path != root_base and not safe_file_path.startswith(root_prefix)):
+                            continue
+                        archive_name = os.path.relpath(safe_file_path, parent_path)
+                        archive.write(safe_file_path, archive_name)
+        zip_handle.seek(0, os.SEEK_END)
+        zip_size = zip_handle.tell()
+        zip_handle.seek(0)
+        if save_to_export:
+            zip_handle.close()
+            return {"zip_path": zip_path, "zip_name": zip_name, "cleanup": cleanup, "saved_to_export": True, "export_path": normalize_rel_path("/" + zip_name)}
+        return {"zip_file": zip_handle, "zip_size": zip_size, "zip_name": zip_name, "cleanup": cleanup, "saved_to_export": False, "export_path": None}
+    except Exception:
+        try:
+            zip_handle.close()
+        except Exception as exc:
+            log_warning("ZIP-Handle konnte nach Fehler nicht geschlossen werden: %s" % exc)
+        if save_to_export and zip_path:
+            try:
+                remove_safe("export", zip_path)
+            except OSError as exc:
+                log_warning("Unvollständiges ZIP konnte nicht entfernt werden: %s" % exc)
+        raise
 
 def extract_zip_file(root_key, archive_rel_path, destination_rel_path="/", overwrite=False):
     archive_path, archive_rel_path = resolve_safe_path(root_key, archive_rel_path)
@@ -3772,7 +3802,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.5.5"
+    server_version = "WinoMCConsole/1.6.1.6"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")
@@ -3807,42 +3837,51 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def _send_file(self, file_path, download_name=None, content_type=None, cleanup=False):
-        candidate_abs = os.path.abspath(str(file_path or ""))
-        safe_file_path = os.path.normpath(os.path.realpath(candidate_abs))
-        matched_base = None
-        for base_path in [allowed_root_base(key) for key in FILE_ROOTS] + [canonical_path(tempfile.gettempdir())]:
-            base_prefix = base_path if base_path.endswith(os.sep) else base_path + os.sep
-            if safe_file_path == base_path or safe_file_path.startswith(base_prefix):
-                matched_base = base_path
-                break
-        if matched_base is None:
-            raise ValueError("Download-Pfad außerhalb der erlaubten Bereiche blockiert.")
-        assert_no_symlink_component(matched_base, candidate_abs, allow_missing=False)
+    def _send_stream(self, handle, size, download_name=None, content_type=None, close_after=False):
         try:
-            if not os.path.isfile(safe_file_path):
-                raise FileNotFoundError("Datei nicht gefunden.")
-            download_name = safe_download_name(download_name or os.path.basename(safe_file_path))
-            content_type = safe_content_type(content_type or mimetypes.guess_type(safe_file_path)[0])
-            size = os.path.getsize(safe_file_path)
+            download_name = safe_download_name(download_name or "winomc-download")
+            content_type = safe_content_type(content_type or "application/octet-stream")
             self.send_response(200)
             self.send_header("Content-Type", content_type)
-            self.send_header("Content-Length", str(size))
+            self.send_header("Content-Length", str(int(size or 0)))
             self.send_header("Content-Disposition", safe_content_disposition_attachment(download_name))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
-            with open(safe_file_path, "rb", opener=safe_open_opener) as handle:
-                while True:
-                    chunk = handle.read(1024 * 1024)
-                    if not chunk:
-                        break
-                    self.wfile.write(chunk)
+            while True:
+                chunk = handle.read(1024 * 1024)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
         finally:
-            if cleanup:
+            if close_after:
                 try:
-                    remove_safe_internal(tempfile.gettempdir(), safe_file_path)
+                    handle.close()
                 except OSError as exc:
-                    log_warning("Temporärer Download konnte nicht bereinigt werden: %s" % exc)
+                    log_warning("Download-Stream konnte nicht geschlossen werden: %s" % exc)
+
+    def _send_root_download(self, root_key, rel_path):
+        file_path, _ = resolve_safe_path(root_key, rel_path)
+        if path_is_dir_root(root_key, file_path):
+            raise ValueError("Ordner können nur als ZIP heruntergeladen werden.")
+        if not path_is_file_root(root_key, file_path):
+            raise FileNotFoundError("Datei nicht gefunden.")
+        download_name = safe_download_name(os.path.basename(file_path), "winomc-download")
+        content_type = safe_content_type(mimetypes.guess_type(download_name)[0])
+        size = getsize_root(root_key, file_path)
+        with open_safe(root_key, file_path, "rb") as handle:
+            self._send_stream(handle, size, download_name=download_name, content_type=content_type, close_after=False)
+
+    def _send_zip_info(self, zip_info):
+        if zip_info.get("saved_to_export"):
+            raise ValueError("Gespeicherte ZIP-Dateien werden nicht direkt gestreamt.")
+        handle = zip_info["zip_file"]
+        self._send_stream(
+            handle,
+            zip_info.get("zip_size", 0),
+            download_name=zip_info.get("zip_name", "winomc-export.zip"),
+            content_type="application/zip",
+            close_after=True,
+        )
 
     def _read_chunked_body(self, max_bytes):
         chunks = []
@@ -3977,10 +4016,7 @@ class Handler(BaseHTTPRequestHandler):
                     raise PermissionError("Download ist durch den Web-Schutz gesperrt. Bitte Web-Schutz entsperren.")
                 root_key = query.get("root", ["config"])[0]
                 rel_path = query.get("path", ["/"])[0]
-                file_path, _ = resolve_safe_path(root_key, rel_path)
-                if path_is_dir_root(root_key, file_path):
-                    raise ValueError("Ordner können nur als ZIP heruntergeladen werden.")
-                self._send_file(file_path, download_name=os.path.basename(file_path))
+                self._send_root_download(root_key, rel_path)
             except Exception as exc:
                 self._send_json(400, {"ok": False, "error": str(exc)})
             return
@@ -3989,7 +4025,7 @@ class Handler(BaseHTTPRequestHandler):
                 if self._web_protection_active():
                     raise PermissionError("ZIP-Download ist durch den Web-Schutz gesperrt. Bitte Web-Schutz entsperren.")
                 zip_info = create_zip_from_paths(query.get("root", ["config"])[0], [query.get("path", ["/"])[0]], save_to_export=False)
-                self._send_file(zip_info["zip_path"], download_name=zip_info["zip_name"], content_type="application/zip", cleanup=zip_info["cleanup"])
+                self._send_zip_info(zip_info)
             except Exception as exc:
                 self._send_json(400, {"ok": False, "error": str(exc)})
             return
@@ -4067,7 +4103,7 @@ class Handler(BaseHTTPRequestHandler):
                 if save_to_export:
                     self._send_json(200, {"ok": True, "saved_to_export": True, "root": "export", "path": zip_info["export_path"], "filename": zip_info["zip_name"]})
                     return
-                self._send_file(zip_info["zip_path"], download_name=zip_info["zip_name"], content_type="application/zip", cleanup=zip_info["cleanup"])
+                self._send_zip_info(zip_info)
             except Exception as exc:
                 self._send_json(400, {"ok": False, "error": str(exc)})
             return
@@ -4122,7 +4158,7 @@ class Handler(BaseHTTPRequestHandler):
                 if zip_info["saved_to_export"]:
                     self._send_json(200, {"ok": True, "saved_to_export": True, "root": "export", "path": zip_info["export_path"], "filename": zip_info["zip_name"], "message": "Sicherer Welt-Export wurde nach /share/winomc/export gespeichert."})
                     return
-                self._send_file(zip_info["zip_path"], download_name=zip_info["zip_name"], content_type="application/zip", cleanup=zip_info["cleanup"])
+                self._send_zip_info(zip_info)
             except Exception as exc:
                 self._send_json(400, {"ok": False, "error": str(exc)})
             return

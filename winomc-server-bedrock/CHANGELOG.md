@@ -5,6 +5,37 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.1.6
+
+#### Security / CodeQL
+
+* Download- und ZIP-Auslieferung im `winomc-console-server` strukturell überarbeitet.
+* Die generische Funktion `_send_file(file_path, ...)` wurde entfernt, damit kein request-beeinflusster Pfad mehr als Parameter bis zu `open(...)` weitergereicht wird.
+* Temporäre ZIP-Downloads werden nun über einen serverseitig erzeugten temporären Dateihandle erstellt und direkt aus diesem Handle gestreamt.
+* ZIP-Dateinamen für temporäre Downloads und gespeicherte Exporte werden serverseitig erzeugt und nicht mehr aus Request-Werten wie `root` zusammengesetzt.
+* Der von CodeQL gemeldete Flow aus `create_zip_from_paths(...)` über `zip_info["zip_path"]` in `_send_file(...)` wurde entfernt.
+* Normale Datei-Downloads laufen über eine eigene Root-/Relativpfad-Downloadfunktion statt über einen generischen Vollpfad-Streamer.
+* ZIP-Ziele für gespeicherte Exporte werden über `mkstemp_root(...)` im erlaubten Export-Root erzeugt.
+* Temporäre ZIPs ohne Export-Speicherung verwenden `tempfile.TemporaryFile(...)` und besitzen keinen von außen beeinflussbaren Pfadnamen.
+
+#### Reliability
+
+* ZIP-Streams werden nach der Auslieferung kontrolliert geschlossen.
+* Unvollständige gespeicherte ZIP-Dateien werden bei Fehlern bereinigt.
+* ZIP-Suffix-Erzeugung korrigiert, sodass gespeicherte Exportdateien wieder sauber mit `.zip` enden.
+* Datei weiterhin syntaktisch mit `python3 -m py_compile` geprüft.
+
+#### Maintenance
+
+* Keine CodeQL-/LGTM-Suppression-Kommentare verwendet.
+* Keine reine Alert-Unterdrückung.
+* Der problematische Pfad-Parameter-Flow wurde aus dem Code entfernt.
+* Interne Download-Auslieferung klarer getrennt in:
+  * `_send_stream(...)` für bereits geöffnete sichere Handles
+  * `_send_root_download(...)` für normale Downloads aus erlaubten WinoMC-Roots
+  * `_send_zip_info(...)` für temporäre ZIP-Streams
+
+
 ### 1.6.1.5
 
 #### Security / CodeQL
