@@ -1039,6 +1039,75 @@ INDEX_HTML = r"""<!doctype html>
 
 
 
+    /* v1.6.1.8 classic file explorer scroll fix
+       The classic view keeps the live console fixed at the bottom. Without an
+       internal scroll area the file table can grow below the visible viewport,
+       especially inside the Home Assistant ingress iframe. Desktop windows keep
+       their own scrolling and are intentionally excluded here. */
+    body:not(.desktop-mode) .tab-panel[data-panel="files"].active {
+      min-height: 0;
+    }
+
+    body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-manager-grid {
+      min-height: 0;
+      align-items: stretch;
+    }
+
+    body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-explorer-panel,
+    body:not(.desktop-mode) .tab-panel[data-panel="files"] .editor-panel {
+      min-height: 0;
+    }
+
+    body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-table-wrap {
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-table th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+    }
+
+    @media (min-width: 1051px) {
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-manager-grid {
+        max-height: clamp(220px, calc(100vh - var(--console-height) - 285px), 760px);
+        overflow: hidden;
+      }
+
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-explorer-panel,
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .editor-panel {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-explorer-panel > .card-header,
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .editor-panel > .card-header,
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .drop-zone,
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-path,
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-meta,
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .editor-actions,
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .readonly-note,
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .info.warning-box {
+        flex: 0 0 auto;
+      }
+
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .file-table-wrap {
+        flex: 1 1 auto;
+        min-height: 160px;
+        overflow: auto;
+      }
+
+      body:not(.desktop-mode) .tab-panel[data-panel="files"] .editor-box {
+        flex: 1 1 auto;
+        min-height: 160px;
+        resize: none;
+      }
+    }
+
+
+
     /* v1.5.7.1 Desktop Overlay Fix
        Prevents stale classic-card maximize overlays from blocking the Desktop Workbench.
        Desktop windows have their own maximize/minimize logic, so the classic card overlay
@@ -3664,7 +3733,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.1.7"
+    server_version = "WinoMCConsole/1.6.1.8"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")

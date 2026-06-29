@@ -5,6 +5,28 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.1.8
+
+#### Web Console / Dateimanager
+
+* Scrollverhalten im klassischen Dateiexplorer der Webkonsole korrigiert.
+* Die Dateiliste erhält im klassischen Modus nun einen eigenen vertikalen Scrollbereich.
+* Dateien am unteren Ende langer Ordnerlisten bleiben dadurch erreichbar, auch wenn die Live-Konsole unten eingeblendet ist.
+* Tabellenkopf im Dateimanager bleibt beim Scrollen sichtbar.
+* Desktop-Modus bleibt unverändert, da dort bereits das Fenster selbst korrekt scrollt.
+
+#### UI / Layout
+
+* Klassischer Dateimanager berücksichtigt die feste Konsolenleiste am unteren Bildschirmrand besser.
+* Explorer- und Editor-Karte nutzen im klassischen Modus nun eine begrenzte Höhe mit internem Scrollen statt unkontrolliert nach unten aus dem sichtbaren Bereich zu wachsen.
+* Touch-/Ingress-Scrolling für Home Assistant verbessert.
+
+#### Maintenance
+
+* Version auf `WinoMCConsole/1.6.1.8` angehoben.
+* Keine Änderungen an der CodeQL-Sicherheitslogik aus 1.6.1.7.
+* Keine Änderungen an Nutzeroptionen oder API-Endpunkten.
+
 ### 1.6.1.7
 
 #### Security / CodeQL
@@ -49,7 +71,6 @@
   * eigentliche Dateisystemoperationen
 * Version auf `WinoMCConsole/1.6.1.7` angehoben.
 
-
 ### 1.6.1.6
 
 #### Security / CodeQL
@@ -79,7 +100,6 @@
   * `_send_stream(...)` für bereits geöffnete sichere Handles
   * `_send_root_download(...)` für normale Downloads aus erlaubten WinoMC-Roots
   * `_send_zip_info(...)` für temporäre ZIP-Streams
-
 
 ### 1.6.1.5
 
@@ -121,7 +141,6 @@
   * AST-Check auf leere `except: pass`-Blöcke
   * Smoke-Tests für Listing, Lesen, Upload-Schreiben, Traversal-Block, Symlink-Block, ZIP-Slip-Block und ZIP-Erstellung
 
-
 ### 1.6.1.4
 
 #### Security / CodeQL
@@ -152,7 +171,6 @@
 * Kein reines Unterdrücken von Alerts.
 * Sicherheitslogik näher an das von CodeQL empfohlene Muster gebracht: erst normalisieren, dann gegen einen erlaubten Basisordner prüfen, danach erst Dateisystemzugriff.
 * Version für Release `1.6.1.4` vorbereitet.
-
 
 ### 1.6.1.3
 
