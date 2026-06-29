@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import base64
+import hashlib
 import json
 import mimetypes
 import os
@@ -70,7 +71,7 @@ INDEX_HTML = r"""<!doctype html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>WinoMC Desktop Workbench 1.5.7.1</title>
+  <title>WinoMC Adaptive Workbench 1.6.11.1</title>
   <style>
     :root {
       color-scheme: dark;
@@ -1962,6 +1963,134 @@ INDEX_HTML = r"""<!doctype html>
       display: inline-flex;
     }
 
+
+    /* v1.16.11.1 Mobile/Tablet/Desktop UX hardening
+       Fixes stale desktop state after switching back to classic mode and makes
+       the mobile file explorer usable on small touch screens. */
+    body:not(.desktop-mode) .desktop-layer,
+    body:not(.desktop-mode) .desktop-taskbar,
+    body:not(.desktop-mode) .desktop-start-menu,
+    body:not(.desktop-mode) .desktop-window-bar {
+      display: none !important;
+      pointer-events: none !important;
+    }
+
+    body:not(.desktop-mode) main.content {
+      position: static !important;
+      inset: auto !important;
+      overflow: visible !important;
+      pointer-events: auto !important;
+    }
+
+    body:not(.desktop-mode) .tab-panel {
+      left: auto !important;
+      top: auto !important;
+      width: auto !important;
+      height: auto !important;
+      min-width: 0 !important;
+      min-height: 0 !important;
+      resize: none !important;
+      z-index: auto !important;
+    }
+
+    body:not(.desktop-mode) .tab-panel.active {
+      display: grid !important;
+      pointer-events: auto !important;
+    }
+
+    .file-table tr.dragging {
+      opacity: .55;
+    }
+    .file-table tr.drop-target td,
+    .file-table-wrap.drop-target,
+    .drop-zone.drop-target {
+      background: rgba(34, 197, 94, .12) !important;
+      outline: 2px solid rgba(34, 197, 94, .45);
+      outline-offset: -2px;
+    }
+    .file-row-actions button.hash-button {
+      border-color: rgba(96, 165, 250, .48);
+    }
+    .file-row-actions button.move-button {
+      border-color: rgba(245, 158, 11, .45);
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-explorer-panel .card-header {
+      gap: 8px;
+    }
+    body.ux-mobile:not(.desktop-mode) .file-explorer-panel .card-header p {
+      display: none;
+    }
+    body.ux-mobile:not(.desktop-mode) .drop-zone {
+      padding: 10px;
+      font-size: 12px;
+      border-radius: 11px;
+    }
+    body.ux-mobile:not(.desktop-mode) .file-table tr {
+      margin-bottom: 7px !important;
+      padding: 8px !important;
+      border-radius: 12px !important;
+    }
+    body.ux-mobile:not(.desktop-mode) .file-table td {
+      padding: 4px 0 !important;
+    }
+    body.ux-mobile:not(.desktop-mode) .file-table td[data-label="Typ"],
+    body.ux-mobile:not(.desktop-mode) .file-table td[data-label="Geändert"] {
+      display: inline-block;
+      width: auto;
+      margin-right: 10px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    body.ux-mobile:not(.desktop-mode) .file-table td[data-label="Typ"]::before,
+    body.ux-mobile:not(.desktop-mode) .file-table td[data-label="Geändert"]::before,
+    body.ux-mobile:not(.desktop-mode) .file-table td[data-label="Aktionen"]::before {
+      display: none !important;
+      content: none !important;
+    }
+    body.ux-mobile:not(.desktop-mode) .file-name-button {
+      font-size: 14px;
+      line-height: 1.25;
+    }
+    body.ux-mobile:not(.desktop-mode) .file-row-actions {
+      display: flex !important;
+      grid-template-columns: none !important;
+      flex-wrap: nowrap !important;
+      gap: 5px !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      padding: 3px 0 2px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: thin;
+    }
+    body.ux-mobile:not(.desktop-mode) .file-row-actions button {
+      width: auto !important;
+      min-width: max-content !important;
+      min-height: 30px !important;
+      padding: 5px 8px !important;
+      font-size: 11px !important;
+      border-radius: 8px !important;
+      flex: 0 0 auto !important;
+    }
+    body.ux-mobile:not(.desktop-mode) .file-toolbar button,
+    body.ux-mobile:not(.desktop-mode) .file-toolbar select,
+    body.ux-mobile:not(.desktop-mode) .file-toolbar input,
+    body.ux-mobile:not(.desktop-mode) .actions button,
+    body.ux-mobile:not(.desktop-mode) .editor-actions button {
+      min-height: 34px !important;
+      padding: 7px 9px !important;
+      font-size: 12px !important;
+      border-radius: 9px !important;
+    }
+    body.ux-mobile:not(.desktop-mode) .file-toolbar {
+      gap: 6px !important;
+    }
+    body.ux-mobile:not(.desktop-mode) .file-path,
+    body.ux-mobile:not(.desktop-mode) .breadcrumb button {
+      font-size: 12px;
+      padding: 7px 9px;
+    }
+
   </style>
 </head>
 <body>
@@ -2590,6 +2719,36 @@ INDEX_HTML = r"""<!doctype html>
 
       entries.forEach(entry => {
         const tr = document.createElement('tr');
+        tr.dataset.path = entry.path;
+        tr.dataset.type = entry.type;
+        if (!inTrash && entry.path !== '/') {
+          tr.draggable = true;
+          tr.addEventListener('dragstart', event => {
+            tr.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('application/x-winomc-file', JSON.stringify({ root: currentFileRoot, path: entry.path, name: entry.name, type: entry.type }));
+            event.dataTransfer.setData('text/plain', entry.path);
+          });
+          tr.addEventListener('dragend', () => tr.classList.remove('dragging'));
+        }
+        if (!inTrash && entry.type === 'directory') {
+          tr.addEventListener('dragover', event => {
+            if (!hasInternalFileDrag(event)) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            tr.classList.add('drop-target');
+          });
+          tr.addEventListener('dragleave', () => tr.classList.remove('drop-target'));
+          tr.addEventListener('drop', event => {
+            if (!hasInternalFileDrag(event)) return;
+            event.preventDefault();
+            tr.classList.remove('drop-target');
+            const item = readInternalDrag(event);
+            if (!item) return;
+            moveFileEntry(item.path, item.name || item.path, item.type || 'file', entry.path, false, true);
+          });
+        }
+
         const nameTd = document.createElement('td');
         const nameButton = document.createElement('button');
         nameButton.type = 'button';
@@ -2634,7 +2793,13 @@ INDEX_HTML = r"""<!doctype html>
           edit.type = 'button';
           edit.textContent = inTrash ? 'Vorschau' : 'Editor';
           edit.addEventListener('click', () => openFileInEditor(entry.path));
-          actions.append(download, edit);
+          const hash = document.createElement('button');
+          hash.type = 'button';
+          hash.textContent = 'MD5';
+          hash.className = 'hash-button';
+          hash.title = 'MD5-Hash dieser Datei berechnen';
+          hash.addEventListener('click', () => checkFileMd5(entry.path, entry.name));
+          actions.append(download, edit, hash);
           if (['.zip', '.mcpack', '.mcaddon', '.mcworld', '.mctemplate'].some(ext => entry.name.toLowerCase().endsWith(ext))) {
             const unzip = document.createElement('button');
             unzip.type = 'button';
@@ -2643,6 +2808,17 @@ INDEX_HTML = r"""<!doctype html>
             unzip.addEventListener('click', () => unzipFile(entry.path));
             actions.appendChild(unzip);
           }
+        }
+
+        if (!inTrash && entry.path !== '/') {
+          const move = document.createElement('button');
+          move.type = 'button';
+          move.textContent = 'Verschieben';
+          move.className = 'move-button';
+          move.dataset.writeAction = 'true';
+          move.title = 'Datei oder Ordner verschieben';
+          move.addEventListener('click', () => moveFileEntryPrompt(entry.path, entry.name, entry.type));
+          actions.appendChild(move);
         }
 
         if (inTrash && entry.path !== '/') {
@@ -2678,6 +2854,23 @@ INDEX_HTML = r"""<!doctype html>
       applyWebWriteLock();
     }
 
+    function hasInternalFileDrag(event) {
+      return event.dataTransfer && Array.from(event.dataTransfer.types || []).includes('application/x-winomc-file');
+    }
+
+    function readInternalDrag(event) {
+      try {
+        const raw = event.dataTransfer.getData('application/x-winomc-file');
+        if (!raw) return null;
+        const data = JSON.parse(raw);
+        if (!data || data.root !== currentFileRoot || !data.path) return null;
+        return data;
+      } catch (err) {
+        appendLine('[WinoMC Dateien] Drag & Drop konnte nicht gelesen werden: ' + err.message, 'error');
+        return null;
+      }
+    }
+
     function downloadFile(path) {
       if (!ensureDownloadAllowed('Download')) return;
       window.location.href = apiUrl('/api/files/download', { root: currentFileRoot, path });
@@ -2687,6 +2880,54 @@ INDEX_HTML = r"""<!doctype html>
       window.location.href = apiUrl('/api/files/zip', { root: currentFileRoot, path });
     }
     async function saveZipToExport(path) { if (!ensureWriteAllowed('ZIP nach Export speichern')) return; try { setFilesStatus('Erstelle ZIP...', 'warn'); const data = await postJson('/api/files/zip', { root: currentFileRoot, paths: [path], save_to_export: true }); appendLine('[WinoMC Dateien] ZIP exportiert: ' + data.filename, 'ok'); setFilesStatus('ZIP exportiert', ''); if (currentFileRoot === 'export') await loadFileList(currentFilePath); } catch (err) { setFilesStatus('Fehler', 'warn'); appendLine('[WinoMC Dateien] ZIP-Fehler: ' + err.message, 'error'); alert(err.message); } }
+
+    async function checkFileMd5(path, name) {
+      try {
+        setFilesStatus('Berechne MD5...', 'warn');
+        const data = await fetchJson('/api/files/md5', { root: currentFileRoot, path });
+        const message = 'MD5 für „' + (name || data.path) + '“:\n\n' + data.md5 + '\n\nGröße: ' + formatBytes(data.size);
+        setFilesStatus('MD5 berechnet', '');
+        appendLine('[WinoMC Dateien] MD5 ' + data.path + ': ' + data.md5, 'ok');
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          try { await navigator.clipboard.writeText(data.md5); } catch (_) {}
+        }
+        alert(message + '\n\nDer Hash wurde, sofern vom Browser erlaubt, in die Zwischenablage kopiert.');
+      } catch (err) {
+        setFilesStatus('Fehler', 'warn');
+        appendLine('[WinoMC Dateien] MD5 fehlgeschlagen: ' + err.message, 'error');
+        alert(err.message);
+      }
+    }
+
+    function moveFileEntryPrompt(path, name, type) {
+      if (!ensureWriteAllowed('Verschieben')) return;
+      const defaultTarget = currentFilePath === '/' ? '/' + name : currentFilePath.replace(/\/$/, '') + '/' + name;
+      const destination = window.prompt('Zielpfad oder Zielordner eingeben:', defaultTarget);
+      if (destination === null) return;
+      moveFileEntry(path, name, type, destination, false, false);
+    }
+
+    async function moveFileEntry(path, name, type, destination, overwrite = false, fromDragDrop = false) {
+      if (!ensureWriteAllowed('Verschieben')) return;
+      if (!destination) return;
+      if (!fromDragDrop && !overwrite && !window.confirm('„' + name + '“ nach „' + destination + '“ verschieben?')) return;
+      try {
+        setFilesStatus('Verschiebe...', 'warn');
+        const data = await postJson('/api/files/move', { root: currentFileRoot, source: path, destination, overwrite: Boolean(overwrite) });
+        appendLine('[WinoMC Dateien] ' + (data.message || ('Verschoben: ' + data.source + ' → ' + data.path)), 'ok');
+        setFilesStatus('Verschoben', '');
+        await loadFileList(currentFilePath);
+      } catch (err) {
+        const message = String(err.message || '');
+        if (!overwrite && message.includes('Ziel existiert bereits') && window.confirm('Ziel existiert bereits. Überschreiben und verschieben?')) {
+          await moveFileEntry(path, name, type, destination, true, false);
+          return;
+        }
+        setFilesStatus('Fehler', 'warn');
+        appendLine('[WinoMC Dateien] Verschieben fehlgeschlagen: ' + err.message, 'error');
+        alert(err.message);
+      }
+    }
     function setEditorPreviewMode(previewOnly, note = '') {
       if (editorPanel) editorPanel.classList.toggle('preview-only', !!previewOnly);
       if (fileEditor) fileEditor.readOnly = !!previewOnly;
@@ -2834,9 +3075,19 @@ INDEX_HTML = r"""<!doctype html>
     fileSave.addEventListener('click', saveEditorFile); fileCloseEditor.addEventListener('click', clearEditor);
     fileDropZone.addEventListener('click', () => { if (ensureWriteAllowed('Upload')) fileUploadInput.click(); });
     fileUploadInput.addEventListener('change', () => { uploadFiles(fileUploadInput.files); fileUploadInput.value = ''; });
-    fileDropZone.addEventListener('dragover', event => { event.preventDefault(); fileDropZone.classList.add('dragover'); });
-    fileDropZone.addEventListener('dragleave', () => fileDropZone.classList.remove('dragover'));
-    fileDropZone.addEventListener('drop', event => { event.preventDefault(); fileDropZone.classList.remove('dragover'); uploadFiles(event.dataTransfer.files); });
+    fileDropZone.addEventListener('dragover', event => { event.preventDefault(); fileDropZone.classList.add('dragover'); if (hasInternalFileDrag(event)) fileDropZone.classList.add('drop-target'); });
+    fileDropZone.addEventListener('dragleave', () => { fileDropZone.classList.remove('dragover'); fileDropZone.classList.remove('drop-target'); });
+    fileDropZone.addEventListener('drop', event => {
+      event.preventDefault();
+      fileDropZone.classList.remove('dragover');
+      fileDropZone.classList.remove('drop-target');
+      if (hasInternalFileDrag(event)) {
+        const item = readInternalDrag(event);
+        if (item) moveFileEntry(item.path, item.name || item.path, item.type || 'file', currentFilePath, false, true);
+        return;
+      }
+      uploadFiles(event.dataTransfer.files);
+    });
 
 
     function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
@@ -3434,6 +3685,30 @@ INDEX_HTML = r"""<!doctype html>
       desktopStartMenu.appendChild(classic);
     }
 
+    function clearDesktopStateForClassic() {
+      desktopStartMenu?.classList.remove('open');
+      document.body.classList.remove('has-maximized-card');
+      document.body.style.overflow = '';
+      document.body.style.pointerEvents = '';
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.remove('desktop-open', 'desktop-minimized', 'desktop-maximized');
+        panel.style.left = '';
+        panel.style.top = '';
+        panel.style.width = '';
+        panel.style.height = '';
+        panel.style.zIndex = '';
+        panel.style.resize = '';
+        delete panel.dataset.desktopPlaced;
+      });
+      document.querySelectorAll('.card').forEach(card => card.classList.remove('maximized'));
+      if (!document.querySelector('.tab-button.active')) document.querySelector('[data-tab="overview"]')?.classList.add('active');
+      const activeTab = document.querySelector('.tab-button.active')?.dataset.tab || 'overview';
+      document.querySelectorAll('[data-panel]').forEach(panel => panel.classList.toggle('active', panel.dataset.panel === activeTab));
+      document.body.classList.toggle('hide-hero', activeTab !== 'overview');
+      if (document.body.classList.contains('console-hidden')) setConsoleMode('normal');
+      updateDesktopTaskbar();
+    }
+
     function setDesktopMode(enabled, options = {}) {
       document.body.classList.toggle('desktop-mode', enabled);
       if (enabled) clearDesktopBlockingOverlays();
@@ -3451,12 +3726,8 @@ INDEX_HTML = r"""<!doctype html>
         if (!document.querySelector('.tab-panel.desktop-open')) openDesktopWindow('overview');
         updateDesktopClock();
       } else {
-        desktopStartMenu?.classList.remove('open');
-        document.body.classList.remove('has-maximized-card');
-        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('desktop-open', 'desktop-minimized', 'desktop-maximized'));
-        document.querySelectorAll('.card').forEach(card => card.classList.remove('maximized'));
-        if (document.body.classList.contains('console-hidden')) setConsoleMode('normal');
-        updateDesktopTaskbar();
+        clearDesktopStateForClassic();
+        if (!options.adaptive) window.setTimeout(applyAdaptiveUx, 0);
       }
     }
 
@@ -4600,6 +4871,83 @@ def restore_from_trash(trash_rel_path, overwrite=False, destination_root=None, d
 
     return {"ok": True, "root": target_root, "path": target_rel, "backup_created": bool(backup_path), "backup_path": backup_path, "message": "Wiederhergestellt nach %s:%s" % (target_root, target_rel)}
 
+
+def move_safe_root(root_key, source_path, target_path):
+    safe_source = verify_root_path(root_key, source_path, require_exists=True, allow_missing=False)
+    safe_target = verify_root_path(root_key, target_path, require_exists=False, allow_missing=True)
+    parent = verify_root_path(root_key, os.path.dirname(safe_target.path), require_exists=True, allow_missing=False)
+    if not parent.is_dir():
+        raise FileNotFoundError("Zielordner existiert nicht.")
+    if safe_target.lexists() and safe_target.is_link():
+        raise ValueError("Verschieben auf einen symbolischen Link ist blockiert.")
+    return safe_source.move_to(safe_target)
+
+
+def move_path(root_key, source_rel_path, destination_rel_path, overwrite=False):
+    root_key = str(root_key or "config")
+    if root_key == "trash":
+        raise ValueError("Papierkorb-Einträge bitte über Wiederherstellen oder Löschen verwalten.")
+    source_path, source_rel = resolve_safe_path(root_key, source_rel_path)
+    if source_rel == "/":
+        raise ValueError("Der Wurzelordner kann nicht verschoben werden.")
+    if not path_exists_root(root_key, source_path):
+        raise FileNotFoundError("Quelle wurde nicht gefunden.")
+
+    dest_path, dest_rel = resolve_safe_path(root_key, destination_rel_path)
+    source_name = os.path.basename(source_rel.rstrip("/"))
+    if path_exists_root(root_key, dest_path) and path_is_dir_root(root_key, dest_path):
+        target_rel = normalize_rel_path(dest_rel.rstrip("/") + "/" + source_name)
+        target_path, target_rel = resolve_safe_path(root_key, target_rel)
+    else:
+        target_path, target_rel = dest_path, dest_rel
+
+    if target_rel == "/":
+        raise ValueError("Ziel darf nicht der Wurzelordner sein.")
+    if target_rel == source_rel:
+        raise ValueError("Quelle und Ziel sind identisch.")
+    if path_is_dir_root(root_key, source_path) and is_inside_base(source_path, target_path):
+        raise ValueError("Ein Ordner kann nicht in sich selbst verschoben werden.")
+
+    parent = assert_safe_path(root_key, os.path.dirname(target_path))
+    if not path_is_dir_root(root_key, parent):
+        raise FileNotFoundError("Zielordner existiert nicht.")
+
+    backup_path = None
+    if path_exists_root(root_key, target_path):
+        if not overwrite:
+            raise FileExistsError("Ziel existiert bereits. Verschieben mit Überschreiben bestätigen.")
+        backup_path = make_file_backup(target_path, root_key, target_rel) if path_is_file_root(root_key, target_path) else None
+        remove_safe(root_key, target_path)
+
+    move_safe_root(root_key, source_path, target_path)
+    return {
+        "ok": True,
+        "root": root_key,
+        "source": source_rel,
+        "path": target_rel,
+        "backup_created": bool(backup_path),
+        "backup_path": backup_path,
+        "message": "Verschoben: %s → %s" % (source_rel, target_rel),
+    }
+
+
+def file_md5_hash(root_key, rel_path):
+    full_path, rel_path = resolve_safe_path(root_key, rel_path)
+    if not path_is_file_root(root_key, full_path):
+        raise FileNotFoundError("MD5 kann nur für Dateien berechnet werden.")
+    try:
+        digest = hashlib.md5(usedforsecurity=False)
+    except TypeError:
+        digest = hashlib.md5()
+    with open_safe(root_key, full_path, "rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return {"ok": True, "root": root_key, "path": rel_path, "size": getsize_root(root_key, full_path), "md5": digest.hexdigest()}
+
+
 def empty_trash():
     trash_base = os.path.realpath(TRASH_DIR)
     makedirs_internal(trash_base, trash_base, exist_ok=True)
@@ -4643,7 +4991,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.1.11"
+    server_version = "WinoMCConsole/1.6.11.1"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")
@@ -4851,6 +5199,12 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as exc:
                 self._send_json(400, {"ok": False, "error": str(exc)})
             return
+        if path.endswith("/api/files/md5") or path == "/api/files/md5":
+            try:
+                self._send_json(200, file_md5_hash(query.get("root", ["config"])[0], query.get("path", ["/"])[0]))
+            except Exception as exc:
+                self._send_json(400, {"ok": False, "error": str(exc)})
+            return
         if path.endswith("/api/files/download") or path == "/api/files/download":
             try:
                 if self._web_protection_active():
@@ -4961,6 +5315,14 @@ class Handler(BaseHTTPRequestHandler):
                 body = self._read_request_body(max_bytes=65536)
                 payload = json.loads(body or "{}")
                 self._send_json(200, delete_or_trash_path(str(payload.get("root", "config")), str(payload.get("path", "/")), permanent=bool(payload.get("permanent", False))))
+            except Exception as exc:
+                self._send_json(400, {"ok": False, "error": str(exc)})
+            return
+        if path.endswith("/api/files/move") or path == "/api/files/move":
+            try:
+                body = self._read_request_body(max_bytes=65536)
+                payload = json.loads(body or "{}")
+                self._send_json(200, move_path(str(payload.get("root", "config")), str(payload.get("source", "/")), str(payload.get("destination", "/")), overwrite=bool(payload.get("overwrite", False))))
             except Exception as exc:
                 self._send_json(400, {"ok": False, "error": str(exc)})
             return

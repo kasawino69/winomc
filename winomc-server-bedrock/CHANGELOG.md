@@ -5,6 +5,45 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.11.1
+
+#### UX / Mobile
+
+* Fehler behoben, bei dem die Oberfläche nach dem Wechsel vom Desktop-Modus zurück in die klassische Ansicht auf Mobile/Touch-Geräten teilweise nicht mehr korrekt bedienbar war.
+* Verwaiste Desktop-Fensterzustände, Inline-Größen und Desktop-Overlays werden beim Wechsel in die klassische Ansicht nun konsequent bereinigt.
+* Mobile Dateimanager-Ansicht kompakter gestaltet:
+  * kleinere Aktionsbuttons
+  * horizontale Aktionsleiste je Datei
+  * weniger vertikaler Platzverbrauch pro Datei
+  * kompaktere Upload-Zone und Toolbar
+* Mobile Safe-Area- und Scroll-Verhalten aus den vorherigen Versionen bleibt erhalten.
+
+#### File Explorer
+
+* Dateien und Ordner können nun über eine neue Schaltfläche **Verschieben** verschoben werden.
+* Drag & Drop innerhalb des Dateimanagers ergänzt:
+  * Dateien/Ordner können auf Ordner gezogen werden.
+  * Dateien/Ordner können auf die Upload-/Drop-Zone gezogen werden, um sie in den aktuell geöffneten Ordner zu verschieben.
+  * Drag & Drop ist in Mobile, Tablet und Desktop verfügbar, sofern das Gerät Drag & Drop unterstützt.
+* Neue MD5-Schaltfläche für Dateien ergänzt.
+* MD5-Hash wird serverseitig berechnet und in der Oberfläche angezeigt; wenn möglich wird der Hash in die Zwischenablage kopiert.
+* Verschieben ist im Papierkorb gesperrt, damit Papierkorb-Einträge weiterhin über Wiederherstellen/Löschen verwaltet werden.
+
+#### Security / Safety
+
+* Neue Backend-API `/api/files/move` nutzt die vorhandene sichere Root-/Pfadprüfung.
+* Verschieben des Wurzelordners wird blockiert.
+* Verschieben eines Ordners in sich selbst wird blockiert.
+* Zielüberschreibung ist nur nach expliziter Bestätigung möglich.
+* Bei überschriebenen Dateien wird, sofern möglich, vorher ein Backup erstellt.
+* Neue Backend-API `/api/files/md5` arbeitet nur mit Dateien aus erlaubten WinoMC-Dateibereichen.
+
+#### Maintenance
+
+* Version auf `WinoMCConsole/1.6.11.1` angehoben.
+* Datei syntaktisch geprüft.
+* Bestehende adaptive Profile `Auto`, `Mobil`, `Tablet` und `Desktop` bleiben erhalten.
+
 ### 1.6.11
 
 #### UX / Adaptive Layout
@@ -48,7 +87,7 @@
 
 #### Maintenance
 
-* Version auf `WinoMCConsole/1.6.1.11` angehoben.
+* Version auf `WinoMCConsole/1.6.11` angehoben.
 * Lokale Syntaxprüfung mit `python3 -m py_compile` durchgeführt.
 * JavaScript-Syntaxprüfung mit `node --check` durchgeführt.
 * Bestehende CodeQL-/Security-Umbauten aus den vorherigen Versionen bleiben erhalten.
