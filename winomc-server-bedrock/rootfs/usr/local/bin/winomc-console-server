@@ -7,6 +7,7 @@ import posixpath
 import re
 import shutil
 import signal
+import stat
 import sys
 import tempfile
 import time
@@ -2588,12 +2589,321 @@ INDEX_HTML = r"""<!doctype html>
 """
 
 
+
+def log_warning(message):
+    print("[WinoMC Console] WARNUNG: %s" % message, file=sys.stderr, flush=True)
+
+
+def canonical_path(path):
+    return os.path.realpath(os.path.abspath(str(path or "")))
+
+
+def safe_component(value):
+    value = str(value or "")
+    if not value or value in (".", ".."):
+        raise ValueError("Unsicheres Pfadsegment blockiert.")
+    if "/" in value or "\\" in value or "\x00" in value:
+        raise ValueError("Unsicheres Pfadsegment blockiert.")
+    if any(ord(ch) < 32 for ch in value):
+        raise ValueError("Unsicheres Pfadsegment blockiert.")
+    return value
+
+
+def safe_rel_parts(rel_path):
+    raw = unquote(str(rel_path or "/")).replace("\\", "/")
+    if "\x00" in raw or any(ord(ch) < 32 for ch in raw):
+        raise ValueError("Unsichere Steuerzeichen im Pfad blockiert.")
+    parts = []
+    for part in raw.split("/"):
+        if not part or part == ".":
+            continue
+        if part == "..":
+            raise ValueError("Pfadnavigation außerhalb des erlaubten Bereichs blockiert.")
+        parts.append(safe_component(part))
+    return parts
+
+
+def normalize_rel_path(rel_path):
+    parts = safe_rel_parts(rel_path)
+    return "/" + "/".join(parts) if parts else "/"
+
+
+def is_inside_base(base_path, candidate_path):
+    base_path = canonical_path(base_path)
+    candidate_path = canonical_path(candidate_path)
+    try:
+        return os.path.commonpath([base_path, candidate_path]) == base_path
+    except (OSError, ValueError):
+        return False
+
+
+def assert_no_symlink_component(base_path, candidate_path, allow_missing=True):
+    base_path = canonical_path(base_path)
+    absolute_candidate = os.path.abspath(str(candidate_path or ""))
+    try:
+        relative = os.path.relpath(absolute_candidate, base_path)
+    except ValueError:
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    if relative == ".":
+        return
+    if relative.startswith(".." + os.sep) or relative == "..":
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    current = base_path
+    for part in relative.split(os.sep):
+        if not part or part == ".":
+            continue
+        if part == "..":
+            raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+        current = os.path.join(current, part)
+        try:
+            mode = os.lstat(current).st_mode
+        except FileNotFoundError:
+            if allow_missing:
+                return
+            raise
+        if stat.S_ISLNK(mode):
+            raise ValueError("Symbolische Links sind im Dateimanager aus Sicherheitsgründen blockiert.")
+
+
+def allowed_root_base(root_key):
+    if root_key not in FILE_ROOTS:
+        raise ValueError("Unbekannter Dateibereich.")
+    base_path = canonical_path(FILE_ROOTS[root_key]["path"])
+    assert_no_symlink_component(os.path.dirname(base_path), base_path, allow_missing=True)
+    return base_path
+
+
+def resolve_safe_path(root_key, rel_path="/"):
+    base_path = allowed_root_base(root_key)
+    parts = safe_rel_parts(rel_path)
+    normalized_rel = "/" + "/".join(parts) if parts else "/"
+    candidate_abs = os.path.join(base_path, *parts) if parts else base_path
+    candidate_real = canonical_path(candidate_abs)
+    if not is_inside_base(base_path, candidate_real):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=True)
+    return candidate_real, normalized_rel
+
+
+def assert_safe_path(root_key, candidate_path, require_exists=False):
+    base_path = allowed_root_base(root_key)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    candidate_real = canonical_path(candidate_abs)
+    if not is_inside_base(base_path, candidate_real):
+        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=not require_exists)
+    if require_exists and not os.path.exists(candidate_real):
+        raise FileNotFoundError("Pfad existiert nicht.")
+    return candidate_real
+
+
+def assert_safe_internal_path(base_dir, candidate_path, require_exists=False):
+    base_path = canonical_path(base_dir)
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    candidate_real = canonical_path(candidate_abs)
+    if not is_inside_base(base_path, candidate_real):
+        raise ValueError("Interner Pfad außerhalb des erlaubten Bereichs blockiert.")
+    assert_no_symlink_component(base_path, candidate_abs, allow_missing=not require_exists)
+    if require_exists and not os.path.exists(candidate_real):
+        raise FileNotFoundError("Interner Pfad existiert nicht.")
+    return candidate_real
+
+
+def allowed_runtime_bases():
+    return [canonical_path(tempfile.gettempdir()), canonical_path(os.path.join(DATA_DIR, ".winomc"))]
+
+
+def assert_runtime_path(candidate_path, require_exists=False):
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    candidate_real = canonical_path(candidate_abs)
+    for base_path in allowed_runtime_bases():
+        if is_inside_base(base_path, candidate_real):
+            assert_no_symlink_component(base_path, candidate_abs, allow_missing=not require_exists)
+            if require_exists and not os.path.exists(candidate_real):
+                raise FileNotFoundError("Runtime-Pfad existiert nicht.")
+            return candidate_real
+    raise ValueError("Runtime-Pfad außerhalb der erlaubten Bereiche blockiert.")
+
+
+def runtime_log_path():
+    try:
+        return assert_runtime_path(LOG_PATH)
+    except Exception as exc:
+        fallback = os.path.join(tempfile.gettempdir(), "winomc-bedrock-console.log")
+        log_warning("Unsicherer LOG_PATH wurde durch Standardpfad ersetzt: %s" % exc)
+        return assert_runtime_path(fallback)
+
+
+def runtime_fifo_path():
+    try:
+        return assert_runtime_path(FIFO_PATH, require_exists=False)
+    except Exception as exc:
+        raise RuntimeError("Unsicherer FIFO-Pfad blockiert: %s" % exc)
+
+
+def ensure_parent_dir(path):
+    parent = canonical_path(os.path.dirname(path))
+    os.makedirs(parent, exist_ok=True)
+    return parent
+
+
+def safe_open_opener(path, flags):
+    return os.open(path, flags | getattr(os, "O_NOFOLLOW", 0), 0o666)
+
+
+def open_checked(path, mode, *args, **kwargs):
+    if "opener" not in kwargs:
+        kwargs["opener"] = safe_open_opener
+    return open(path, mode, *args, **kwargs)
+
+
+def open_safe(root_key, candidate_path, mode, *args, **kwargs):
+    write_mode = any(flag in str(mode) for flag in ("w", "a", "x", "+"))
+    safe_path = assert_safe_path(root_key, candidate_path, require_exists=not write_mode)
+    if write_mode:
+        parent = assert_safe_path(root_key, os.path.dirname(safe_path), require_exists=True)
+        if not os.path.isdir(parent):
+            raise FileNotFoundError("Zielordner existiert nicht.")
+        if os.path.lexists(safe_path) and os.path.islink(safe_path):
+            raise ValueError("Schreiben auf symbolische Links ist blockiert.")
+    return open_checked(safe_path, mode, *args, **kwargs)
+
+
+def open_safe_internal(base_dir, candidate_path, mode, *args, **kwargs):
+    write_mode = any(flag in str(mode) for flag in ("w", "a", "x", "+"))
+    safe_path = assert_safe_internal_path(base_dir, candidate_path, require_exists=not write_mode)
+    if write_mode:
+        parent = assert_safe_internal_path(base_dir, os.path.dirname(safe_path), require_exists=True)
+        if not os.path.isdir(parent):
+            raise FileNotFoundError("Interner Zielordner existiert nicht.")
+        if os.path.lexists(safe_path) and os.path.islink(safe_path):
+            raise ValueError("Schreiben auf symbolische Links ist blockiert.")
+    return open_checked(safe_path, mode, *args, **kwargs)
+
+
+def path_exists_root(root_key, candidate_path):
+    return os.path.exists(assert_safe_path(root_key, candidate_path))
+
+
+def path_is_file_root(root_key, candidate_path):
+    return os.path.isfile(assert_safe_path(root_key, candidate_path))
+
+
+def path_is_dir_root(root_key, candidate_path):
+    return os.path.isdir(assert_safe_path(root_key, candidate_path))
+
+
+def path_is_link_root(root_key, candidate_path):
+    return os.path.islink(assert_safe_path(root_key, candidate_path))
+
+
+def stat_root(root_key, candidate_path):
+    return os.stat(assert_safe_path(root_key, candidate_path, require_exists=True))
+
+
+def getsize_root(root_key, candidate_path):
+    return os.path.getsize(assert_safe_path(root_key, candidate_path, require_exists=True))
+
+
+def listdir_root(root_key, candidate_path):
+    return os.listdir(assert_safe_path(root_key, candidate_path, require_exists=True))
+
+
+def makedirs_root(root_key, candidate_path, exist_ok=True):
+    safe_path = assert_safe_path(root_key, candidate_path)
+    os.makedirs(safe_path, exist_ok=exist_ok)
+    return assert_safe_path(root_key, safe_path, require_exists=True)
+
+
+def makedirs_internal(base_dir, candidate_path, exist_ok=True):
+    safe_path = assert_safe_internal_path(base_dir, candidate_path)
+    os.makedirs(safe_path, exist_ok=exist_ok)
+    return assert_safe_internal_path(base_dir, safe_path, require_exists=True)
+
+
+def mkstemp_root(root_key, parent_path, prefix, suffix=""):
+    parent = assert_safe_path(root_key, parent_path, require_exists=True)
+    if not os.path.isdir(parent):
+        raise FileNotFoundError("Zielordner existiert nicht.")
+    fd, temp_path = tempfile.mkstemp(prefix=prefix, suffix=suffix, dir=parent)
+    return fd, assert_safe_path(root_key, temp_path, require_exists=True)
+
+
+def mkstemp_internal(base_dir, parent_path, prefix, suffix=""):
+    parent = assert_safe_internal_path(base_dir, parent_path, require_exists=True)
+    if not os.path.isdir(parent):
+        raise FileNotFoundError("Interner Zielordner existiert nicht.")
+    fd, temp_path = tempfile.mkstemp(prefix=prefix, suffix=suffix, dir=parent)
+    return fd, assert_safe_internal_path(base_dir, temp_path, require_exists=True)
+
+
+def replace_safe(root_key, source_path, target_path):
+    safe_source = assert_safe_path(root_key, source_path, require_exists=True)
+    safe_target = assert_safe_path(root_key, target_path)
+    assert_safe_path(root_key, os.path.dirname(safe_target), require_exists=True)
+    if os.path.lexists(safe_target) and os.path.islink(safe_target):
+        raise ValueError("Ersetzen eines symbolischen Links ist blockiert.")
+    os.replace(safe_source, safe_target)
+
+
+def remove_safe(root_key, candidate_path):
+    safe_path = assert_safe_path(root_key, candidate_path, require_exists=True)
+    if os.path.isdir(safe_path) and not os.path.islink(safe_path):
+        shutil.rmtree(safe_path)
+    else:
+        os.remove(safe_path)
+
+
+def remove_safe_internal(base_dir, candidate_path):
+    safe_path = assert_safe_internal_path(base_dir, candidate_path, require_exists=True)
+    if os.path.isdir(safe_path) and not os.path.islink(safe_path):
+        shutil.rmtree(safe_path)
+    else:
+        os.remove(safe_path)
+
+
+def copy2_safe(root_key, source_path, target_path):
+    safe_source = assert_safe_path(root_key, source_path, require_exists=True)
+    safe_target = assert_safe_internal_path(os.path.dirname(target_path), target_path)
+    shutil.copy2(safe_source, safe_target)
+
+
+def move_safe_root_to_internal(root_key, source_path, internal_base, target_path):
+    safe_source = assert_safe_path(root_key, source_path, require_exists=True)
+    safe_target = assert_safe_internal_path(internal_base, target_path)
+    return shutil.move(safe_source, safe_target)
+
+
+def move_safe_internal_to_root(internal_base, source_path, root_key, target_path):
+    safe_source = assert_safe_internal_path(internal_base, source_path, require_exists=True)
+    safe_target = assert_safe_path(root_key, target_path)
+    assert_safe_path(root_key, os.path.dirname(safe_target), require_exists=True)
+    return shutil.move(safe_source, safe_target)
+
+
+def assert_safe_download_path(candidate_path):
+    candidate_abs = os.path.abspath(str(candidate_path or ""))
+    candidate_real = canonical_path(candidate_abs)
+    allowed_bases = [allowed_root_base(key) for key in FILE_ROOTS]
+    allowed_bases.append(canonical_path(tempfile.gettempdir()))
+    for base_path in allowed_bases:
+        if is_inside_base(base_path, candidate_real):
+            assert_no_symlink_component(base_path, candidate_abs, allow_missing=False)
+            return candidate_real
+    raise ValueError("Download-Pfad außerhalb der erlaubten Bereiche blockiert.")
+
+
+def open_safe_download(candidate_path, mode="rb"):
+    safe_path = assert_safe_download_path(candidate_path)
+    return open_checked(safe_path, mode)
+
+
 def ensure_directories():
     for path in (DATA_DIR, WORLDS_DIR, RESOURCE_PACKS_DIR, BEHAVIOR_PACKS_DIR, WORLD_TEMPLATES_DIR, IMPORT_DIR, EXPORT_DIR, FILE_BACKUP_DIR, TRASH_DIR):
         try:
-            os.makedirs(path, exist_ok=True)
-        except Exception:
-            pass
+            os.makedirs(canonical_path(path), exist_ok=True)
+        except OSError as exc:
+            log_warning("Verzeichnis konnte nicht erstellt werden: %s (%s)" % (path, exc))
 
 
 def client_allowed(client_ip):
@@ -2605,10 +2915,14 @@ def client_allowed(client_ip):
 def read_recent_lines(path, limit):
     lines = deque(maxlen=max(1, limit))
     try:
-        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+        safe_path = assert_runtime_path(path, require_exists=True)
+        with open_checked(safe_path, "r", encoding="utf-8", errors="replace") as handle:
             for line in handle:
                 lines.append(line.rstrip("\n"))
     except FileNotFoundError:
+        return []
+    except Exception as exc:
+        log_warning("Log konnte nicht gelesen werden: %s" % exc)
         return []
     return list(lines)
 
@@ -2626,11 +2940,18 @@ def sanitize_command(command):
 
 
 def write_command(command):
-    if not os.path.exists(FIFO_PATH):
+    fifo_path = runtime_fifo_path()
+    if not os.path.exists(fifo_path):
         raise RuntimeError("Console FIFO existiert noch nicht. Läuft der Bedrock Server bereits?")
-    if not os.path.exists(LOG_PATH):
-        open(LOG_PATH, "a", encoding="utf-8").close()  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    fd = os.open(FIFO_PATH, os.O_WRONLY | os.O_NONBLOCK)
+    mode = os.lstat(fifo_path).st_mode
+    if stat.S_ISLNK(mode) or not stat.S_ISFIFO(mode):
+        raise RuntimeError("Console FIFO ist kein sicherer FIFO-Pfad.")
+    log_path = runtime_log_path()
+    ensure_parent_dir(log_path)
+    if not os.path.exists(log_path):
+        with open_checked(log_path, "a", encoding="utf-8"):
+            pass
+    fd = os.open(fifo_path, os.O_WRONLY | os.O_NONBLOCK | getattr(os, "O_NOFOLLOW", 0))
     try:
         os.write(fd, (command + "\n").encode("utf-8"))
     finally:
@@ -2640,98 +2961,12 @@ def write_command(command):
 
 def append_console_note(message):
     try:
-        with open(LOG_PATH, "a", encoding="utf-8", errors="replace") as log_handle:  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+        log_path = runtime_log_path()
+        ensure_parent_dir(log_path)
+        with open_checked(log_path, "a", encoding="utf-8", errors="replace") as log_handle:
             log_handle.write("[WinoMC Console] %s\n" % message)
-    except Exception:
-        pass
-
-
-def normalize_rel_path(rel_path):
-    rel_path = unquote(str(rel_path or "/")).replace("\\", "/").replace("\x00", "")
-    rel_path = posixpath.normpath("/" + rel_path.lstrip("/"))
-    if rel_path == "/.":
-        rel_path = "/"
-    return rel_path
-
-
-def is_inside_base(base_path, candidate_path):
-    base_path = os.path.realpath(base_path)
-    candidate_path = os.path.realpath(candidate_path)
-    try:
-        return os.path.commonpath([base_path, candidate_path]) == base_path
-    except (OSError, ValueError):
-        return False
-
-
-def resolve_safe_path(root_key, rel_path="/"):
-    if root_key not in FILE_ROOTS:
-        raise ValueError("Unbekannter Dateibereich.")
-    rel_path = normalize_rel_path(rel_path)
-    base_path = os.path.realpath(FILE_ROOTS[root_key]["path"])
-    candidate_path = os.path.realpath(os.path.join(base_path, rel_path.lstrip("/")))
-    if not is_inside_base(base_path, candidate_path):
-        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
-    return candidate_path, rel_path
-
-
-def assert_safe_path(root_key, candidate_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    if root_key not in FILE_ROOTS:
-        raise ValueError("Unbekannter Dateibereich.")
-    base_path = os.path.realpath(FILE_ROOTS[root_key]["path"])
-    candidate_path = os.path.realpath(candidate_path)
-    if not is_inside_base(base_path, candidate_path):
-        raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
-    return candidate_path
-
-
-def assert_safe_internal_path(base_dir, candidate_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    base_path = os.path.realpath(base_dir)
-    candidate_path = os.path.realpath(candidate_path)
-    if not is_inside_base(base_path, candidate_path):
-        raise ValueError("Interner Pfad außerhalb des erlaubten Bereichs blockiert.")
-    return candidate_path
-
-
-def assert_safe_download_path(candidate_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    candidate_path = os.path.realpath(candidate_path)
-    allowed_bases = [os.path.realpath(info["path"]) for info in FILE_ROOTS.values()]
-    allowed_bases.append(os.path.realpath(tempfile.gettempdir()))
-    for base_path in allowed_bases:
-        if is_inside_base(base_path, candidate_path):
-            return candidate_path
-    raise ValueError("Download-Pfad außerhalb der erlaubten Bereiche blockiert.")
-
-
-def open_safe(root_key, candidate_path, mode, *args, **kwargs):
-    safe_path = assert_safe_path(root_key, candidate_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    return open(safe_path, mode, *args, **kwargs)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-
-
-def open_safe_internal(base_dir, candidate_path, mode, *args, **kwargs):
-    safe_path = assert_safe_internal_path(base_dir, candidate_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    return open(safe_path, mode, *args, **kwargs)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-
-
-def replace_safe(root_key, source_path, target_path):
-    safe_source = assert_safe_path(root_key, source_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    safe_target = assert_safe_path(root_key, target_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    os.replace(safe_source, safe_target)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-
-
-def remove_safe(root_key, candidate_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    safe_path = assert_safe_path(root_key, candidate_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    if os.path.isdir(safe_path) and not os.path.islink(safe_path):
-        shutil.rmtree(safe_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    else:
-        os.remove(safe_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-
-
-def remove_safe_internal(base_dir, candidate_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    safe_path = assert_safe_internal_path(base_dir, candidate_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    if os.path.isdir(safe_path) and not os.path.islink(safe_path):
-        shutil.rmtree(safe_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    else:
-        os.remove(safe_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    except Exception as exc:
+        log_warning("Console-Log konnte nicht geschrieben werden: %s" % exc)
 
 
 def safe_download_name(name, fallback="winomc-download"):
@@ -2740,6 +2975,12 @@ def safe_download_name(name, fallback="winomc-download"):
     name = name.strip("._-")
     return name or fallback
 
+
+def console_settings_paths():
+    settings_dir = canonical_path(os.path.join(DATA_DIR, ".winomc"))
+    settings_name = safe_download_name(os.path.basename(CONSOLE_SETTINGS_FILE), "web_console_settings.json")
+    settings_file = assert_safe_internal_path(settings_dir, os.path.join(settings_dir, settings_name))
+    return settings_dir, settings_file
 
 def parse_bool(value, default=False):
     if value is None:
@@ -2772,18 +3013,17 @@ def validate_json_if_needed(path, content):
 
 
 def make_file_backup(file_path, root_key, rel_path):
-    file_path = assert_safe_path(root_key, file_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    if not os.path.exists(file_path) or not os.path.isfile(file_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    file_path = assert_safe_path(root_key, file_path, require_exists=False)
+    if not path_exists_root(root_key, file_path) or not path_is_file_root(root_key, file_path):
         return None
-    backup_base = os.path.realpath(FILE_BACKUP_DIR)
-    os.makedirs(backup_base, exist_ok=True)
+    backup_base = makedirs_internal(FILE_BACKUP_DIR, FILE_BACKUP_DIR, exist_ok=True)
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
     rel_name = normalize_rel_path(rel_path).replace("/", "__")
     backup_name = safe_download_name("%s-%s-%s" % (timestamp, root_key, rel_name), "winomc-file-backup")
-    backup_path = assert_safe_internal_path(backup_base, os.path.join(backup_base, backup_name))  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    if os.path.exists(backup_path):
-        backup_path = assert_safe_internal_path(backup_base, backup_path + ".bak")  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    shutil.copy2(file_path, backup_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    backup_path = assert_safe_internal_path(backup_base, os.path.join(backup_base, backup_name))
+    if os.path.exists(assert_safe_internal_path(backup_base, backup_path)):
+        backup_path = assert_safe_internal_path(backup_base, backup_path + ".bak")
+    shutil.copy2(assert_safe_path(root_key, file_path, require_exists=True), assert_safe_internal_path(backup_base, backup_path))
     return backup_path
 
 
@@ -2791,38 +3031,38 @@ def list_file_roots():
     cleanup_trash()
     roots = []
     for key, info in FILE_ROOTS.items():
-        path = os.path.realpath(info["path"])
+        path = allowed_root_base(key)
         roots.append({"key": key, "label": info["label"], "description": info.get("description", ""), "path": path, "exists": os.path.exists(path), "readable": os.path.isdir(path) and os.access(path, os.R_OK)})
     return roots
 
 
 def list_directory(root_key, rel_path="/"):
     full_path, rel_path = resolve_safe_path(root_key, rel_path)
-    if not os.path.exists(full_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    if not path_exists_root(root_key, full_path):
         raise FileNotFoundError("Pfad existiert nicht.")
-    if not os.path.isdir(full_path):
+    if not path_is_dir_root(root_key, full_path):
         raise ValueError("Pfad ist kein Ordner.")
-    root_base = os.path.realpath(FILE_ROOTS[root_key]["path"])
+    root_base = allowed_root_base(root_key)
     entries = []
-    for name in sorted(os.listdir(full_path), key=lambda item: item.lower()):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    for name in sorted(listdir_root(root_key, full_path), key=lambda item: item.lower()):
         if root_key == "trash" and name.endswith(".winomc-trash.json"):
             continue
         child_path = os.path.join(full_path, name)
-        if os.path.islink(child_path):
+        if path_is_link_root(root_key, child_path):
             continue
         if not is_inside_base(root_base, child_path):
             continue
         try:
-            stat = os.stat(child_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+            stat = stat_root(root_key, child_path)
         except OSError:
             continue
-        is_dir = os.path.isdir(child_path)
+        is_dir = path_is_dir_root(root_key, child_path)
         child_rel_path = normalize_rel_path(posixpath.join(rel_path, name))
         entry = {"name": name, "path": child_rel_path, "type": "directory" if is_dir else "file", "size": stat.st_size, "modified": int(stat.st_mtime), "downloadable": not is_dir, "zipable": True, "editable": (not is_dir and is_editable_text_file(child_path)), "extractable": (not is_dir and file_extension(child_path) in ZIP_EXTENSIONS)}
         if root_key == "trash":
             meta_path = child_path + ".winomc-trash.json"
             try:
-                with open(meta_path, "r", encoding="utf-8") as handle:
+                with open_safe("trash", meta_path, "r", encoding="utf-8") as handle:
                     meta = json.load(handle)
                 entry["trash_meta"] = meta
                 entry["original_root"] = meta.get("original_root", "")
@@ -2838,28 +3078,28 @@ def list_directory(root_key, rel_path="/"):
 
 def read_text_file(root_key, rel_path):
     file_path, rel_path = resolve_safe_path(root_key, rel_path)
-    if not os.path.exists(file_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    if not path_exists_root(root_key, file_path):
         raise FileNotFoundError("Datei existiert nicht.")
-    if not os.path.isfile(file_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    if not path_is_file_root(root_key, file_path):
         raise ValueError("Nur Dateien können im Editor geöffnet werden.")
     if not is_editable_text_file(file_path):
         raise ValueError("Dieser Dateityp ist nicht für den Texteditor freigegeben.")
-    size = os.path.getsize(file_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    size = getsize_root(root_key, file_path)
     if size > MAX_TEXT_FILE_BYTES:
         raise ValueError("Datei ist zu groß für den Editor. Maximum: %s Bytes." % MAX_TEXT_FILE_BYTES)
     with open_safe(root_key, file_path, "r", encoding="utf-8", errors="replace") as handle:
         content = handle.read()
-    stat = os.stat(file_path)
-    return {"ok": True, "root": root_key, "path": rel_path, "name": os.path.basename(file_path), "size": stat.st_size, "modified": int(stat.st_mtime), "editable": True, "json": file_extension(file_path) in JSON_EXTENSIONS, "content": content}
+    file_stat = stat_root(root_key, file_path)
+    return {"ok": True, "root": root_key, "path": rel_path, "name": os.path.basename(file_path), "size": file_stat.st_size, "modified": int(file_stat.st_mtime), "editable": True, "json": file_extension(file_path) in JSON_EXTENSIONS, "content": content}
 
 
 def write_text_file(root_key, rel_path, content):
     if root_key == "trash":
         raise ValueError("Papierkorb-Dateien sind nur als Vorschau geöffnet. Bitte zuerst wiederherstellen.")
     file_path, rel_path = resolve_safe_path(root_key, rel_path)
-    if os.path.isdir(file_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    if path_is_dir_root(root_key, file_path):
         raise ValueError("Ordner können nicht als Datei gespeichert werden.")
-    parent = assert_safe_path(root_key, os.path.dirname(file_path))  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    parent = assert_safe_path(root_key, os.path.dirname(file_path), require_exists=True)
     if not os.path.isdir(parent):
         raise FileNotFoundError("Zielordner existiert nicht.")
     if not is_editable_text_file(file_path):
@@ -2867,31 +3107,30 @@ def write_text_file(root_key, rel_path, content):
     content = str(content or "")
     validate_json_if_needed(file_path, content)
     backup_path = make_file_backup(file_path, root_key, rel_path)
-    fd, temp_path = tempfile.mkstemp(prefix=".winomc-edit-", dir=parent)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    fd, temp_path = mkstemp_root(root_key, parent, prefix=".winomc-edit-")
     os.close(fd)
-    temp_path = assert_safe_path(root_key, temp_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
     try:
         with open_safe(root_key, temp_path, "w", encoding="utf-8", newline="") as handle:
             handle.write(content)
         replace_safe(root_key, temp_path, file_path)
     except Exception:
         try:
-            remove_safe(root_key, temp_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-        except OSError:
-            pass
+            remove_safe(root_key, temp_path)
+        except OSError as exc:
+            log_warning("Temporäre Editor-Datei konnte nicht entfernt werden: %s" % exc)
         raise
     return {"ok": True, "root": root_key, "path": rel_path, "backup_created": bool(backup_path), "backup_path": backup_path, "message": "Datei gespeichert."}
 
 
 def prepare_upload_target(root_key, dir_rel_path, filename, overwrite=False):
     dir_path, dir_rel_path = resolve_safe_path(root_key, dir_rel_path)
-    if not os.path.exists(dir_path):
+    if not path_exists_root(root_key, dir_path):
         raise FileNotFoundError("Upload-Zielordner existiert nicht.")
-    if not os.path.isdir(dir_path):
+    if not path_is_dir_root(root_key, dir_path):
         raise ValueError("Upload-Ziel ist kein Ordner.")
     filename = safe_download_name(unquote(filename or ""), "upload.bin")
-    target_path = assert_safe_path(root_key, os.path.join(dir_path, filename))  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    if os.path.exists(target_path) and not overwrite:  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    target_path = assert_safe_path(root_key, os.path.join(dir_path, filename))
+    if path_exists_root(root_key, target_path) and not overwrite:
         raise FileExistsError("Datei existiert bereits. Überschreiben wurde nicht erlaubt.")
     target_rel_path = normalize_rel_path(posixpath.join(dir_rel_path, filename))
     return target_path, target_rel_path
@@ -2900,58 +3139,57 @@ def prepare_upload_target(root_key, dir_rel_path, filename, overwrite=False):
 def create_zip_from_paths(root_key, rel_paths, save_to_export=False):
     if not rel_paths:
         raise ValueError("Keine Dateien oder Ordner ausgewählt.")
-    root_base = os.path.realpath(FILE_ROOTS[root_key]["path"])
+    root_base = allowed_root_base(root_key)
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
     zip_name = safe_download_name("winomc-%s-%s.zip" % (root_key, timestamp))
     if save_to_export:
         export_dir, _ = resolve_safe_path("export", "/")
-        os.makedirs(export_dir, exist_ok=True)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-        zip_path = assert_safe_path("export", os.path.join(export_dir, zip_name))  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+        makedirs_root("export", export_dir, exist_ok=True)
+        zip_path = assert_safe_path("export", os.path.join(export_dir, zip_name))
         cleanup = False
     else:
-        fd, zip_path = tempfile.mkstemp(prefix="winomc-", suffix=".zip")  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+        fd, zip_path = mkstemp_internal(tempfile.gettempdir(), tempfile.gettempdir(), prefix="winomc-", suffix=".zip")
         os.close(fd)
-        zip_path = assert_safe_internal_path(tempfile.gettempdir(), zip_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
         cleanup = True
-    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         for rel_path in rel_paths:
             source_path, normalized_rel_path = resolve_safe_path(root_key, rel_path)
-            if not os.path.exists(source_path):
+            if not path_exists_root(root_key, source_path):
                 raise FileNotFoundError("Nicht gefunden: %s" % normalized_rel_path)
-            if os.path.islink(source_path):
+            if path_is_link_root(root_key, source_path):
                 continue
             if not is_inside_base(root_base, source_path):
                 raise ValueError("Pfad außerhalb des erlaubten Bereichs blockiert.")
             source_name = safe_download_name(os.path.basename(source_path.rstrip(os.sep)) or FILE_ROOTS[root_key]["label"], "winomc-files")
-            if os.path.isfile(source_path):
-                archive.write(source_path, source_name)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+            if path_is_file_root(root_key, source_path):
+                archive.write(assert_safe_path(root_key, source_path, require_exists=True), source_name)
                 continue
             parent_path = os.path.dirname(source_path.rstrip(os.sep))
-            for current_root, dirs, files in os.walk(source_path, followlinks=False):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-                dirs[:] = [dirname for dirname in dirs if not os.path.islink(os.path.join(current_root, dirname)) and is_inside_base(root_base, os.path.join(current_root, dirname))]  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+            for current_root, dirs, files in os.walk(assert_safe_path(root_key, source_path, require_exists=True), followlinks=False):
+                dirs[:] = [dirname for dirname in dirs if not os.path.islink(os.path.join(current_root, dirname)) and is_inside_base(root_base, os.path.join(current_root, dirname))]
                 for filename in files:
-                    file_path = os.path.join(current_root, filename)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+                    file_path = os.path.join(current_root, filename)
                     if os.path.islink(file_path) or not is_inside_base(root_base, file_path):
                         continue
-                    archive_name = os.path.relpath(file_path, parent_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-                    archive.write(file_path, archive_name)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+                    archive_name = os.path.relpath(file_path, parent_path)
+                    archive.write(assert_safe_path(root_key, file_path, require_exists=True), archive_name)
     return {"zip_path": zip_path, "zip_name": zip_name, "cleanup": cleanup, "saved_to_export": save_to_export, "export_path": normalize_rel_path("/" + zip_name) if save_to_export else None}
 
 
 def extract_zip_file(root_key, archive_rel_path, destination_rel_path="/", overwrite=False):
     archive_path, archive_rel_path = resolve_safe_path(root_key, archive_rel_path)
     destination_path, destination_rel_path = resolve_safe_path(root_key, destination_rel_path)
-    if not os.path.isfile(archive_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    if not path_is_file_root(root_key, archive_path):
         raise FileNotFoundError("ZIP-Datei nicht gefunden.")
     if file_extension(archive_path) not in ZIP_EXTENSIONS:
         raise ValueError("Nur .zip, .mcpack, .mcaddon, .mcworld und .mctemplate können entpackt werden.")
-    if not os.path.isdir(destination_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    if not path_is_dir_root(root_key, destination_path):
         raise ValueError("Ziel zum Entpacken ist kein Ordner.")
-    root_base = os.path.realpath(FILE_ROOTS[root_key]["path"])
+    root_base = allowed_root_base(root_key)
     extracted_files = 0
     extracted_dirs = 0
     total_size = 0
-    with zipfile.ZipFile(assert_safe_path(root_key, archive_path), "r") as archive:  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    with zipfile.ZipFile(assert_safe_path(root_key, archive_path), "r") as archive:
         for member in archive.infolist():
             total_size += int(member.file_size or 0)
             if total_size > MAX_ZIP_UNPACK_BYTES:
@@ -2963,19 +3201,19 @@ def extract_zip_file(root_key, archive_rel_path, destination_rel_path="/", overw
             normalized_name = posixpath.normpath(raw_name)
             if normalized_name in ("", ".") or normalized_name.startswith("../") or normalized_name == "..":
                 raise ValueError("Unsicherer Archiv-Pfad blockiert: %s" % raw_name)
-            target_path = os.path.realpath(os.path.join(destination_path, normalized_name))
+            target_candidate = os.path.join(destination_path, normalized_name)
+            target_path = assert_safe_path(root_key, target_candidate)
             if not is_inside_base(destination_path, target_path) or not is_inside_base(root_base, target_path):
                 raise ValueError("Archiv-Pfad außerhalb des erlaubten Bereichs blockiert: %s" % raw_name)
-            target_path = assert_safe_path(root_key, target_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
             if member.is_dir():
-                os.makedirs(target_path, exist_ok=True)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+                makedirs_root(root_key, target_path, exist_ok=True)
                 extracted_dirs += 1
                 continue
-            if os.path.exists(target_path) and not overwrite:  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+            if path_exists_root(root_key, target_path) and not overwrite:
                 raise FileExistsError("Datei existiert bereits: %s" % normalized_name)
-            os.makedirs(assert_safe_path(root_key, os.path.dirname(target_path)), exist_ok=True)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-            with archive.open(member, "r") as source, open_safe(root_key, target_path, "wb") as target:  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-                shutil.copyfileobj(source, target, length=1024 * 1024)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+            makedirs_root(root_key, os.path.dirname(target_path), exist_ok=True)
+            with archive.open(member, "r") as source, open_safe(root_key, target_path, "wb") as target:
+                shutil.copyfileobj(source, target, length=1024 * 1024)
             extracted_files += 1
     return {"ok": True, "root": root_key, "archive": archive_rel_path, "destination": destination_rel_path, "files": extracted_files, "directories": extracted_dirs, "message": "Archiv wurde entpackt."}
 
@@ -2983,7 +3221,7 @@ def extract_zip_file(root_key, archive_rel_path, destination_rel_path="/", overw
 def create_safe_world_export(world_rel_path="/world", save_to_export=True):
     world_rel_path = normalize_rel_path(world_rel_path)
     world_path, _ = resolve_safe_path("worlds", world_rel_path)
-    if not os.path.isdir(world_path):
+    if not path_is_dir_root("worlds", world_path):
         raise FileNotFoundError("Weltordner wurde nicht gefunden.")
     hold_sent = False
     try:
@@ -3007,50 +3245,39 @@ def create_safe_world_export(world_rel_path="/world", save_to_export=True):
 
 
 
-def remove_path(path):
-    if os.path.isdir(path) and not os.path.islink(path):
-        shutil.rmtree(path)
-    else:
-        os.remove(path)
-
-
-
 def load_console_settings():
     defaults = {"trash_retention_days": TRASH_RETENTION_DAYS}
     try:
-        settings_dir = os.path.realpath(os.path.dirname(CONSOLE_SETTINGS_FILE))
-        settings_file = assert_safe_internal_path(settings_dir, CONSOLE_SETTINGS_FILE)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+        settings_dir, settings_file = console_settings_paths()
         with open_safe_internal(settings_dir, settings_file, "r", encoding="utf-8") as handle:
             data = json.load(handle)
         if not isinstance(data, dict):
             return defaults
         defaults.update(data)
     except FileNotFoundError:
-        pass
-    except Exception:
-        pass
+        return defaults
+    except Exception as exc:
+        log_warning("Console-Einstellungen konnten nicht gelesen werden: %s" % exc)
     return defaults
 
 
 def save_console_settings(settings):
-    settings_dir = os.path.realpath(os.path.dirname(CONSOLE_SETTINGS_FILE))
-    os.makedirs(settings_dir, exist_ok=True)
-    settings_file = assert_safe_internal_path(settings_dir, CONSOLE_SETTINGS_FILE)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    settings_dir, settings_file = console_settings_paths()
+    makedirs_internal(settings_dir, settings_dir, exist_ok=True)
     current = load_console_settings()
     current.update(settings)
-    fd, temp_path = tempfile.mkstemp(prefix=".winomc-settings-", dir=settings_dir)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    fd, temp_path = mkstemp_internal(settings_dir, settings_dir, prefix=".winomc-settings-")
     os.close(fd)
-    temp_path = assert_safe_internal_path(settings_dir, temp_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
     try:
         with open_safe_internal(settings_dir, temp_path, "w", encoding="utf-8") as handle:
             json.dump(current, handle, indent=2, ensure_ascii=False)
             handle.write("\n")
-        os.replace(temp_path, settings_file)  # lgtm[py/path-injection] codeql[py/path-injection] settings paths are constrained to settings_dir.
+        os.replace(assert_safe_internal_path(settings_dir, temp_path, require_exists=True), assert_safe_internal_path(settings_dir, settings_file))
     except Exception:
         try:
-            remove_safe_internal(settings_dir, temp_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-        except OSError:
-            pass
+            remove_safe_internal(settings_dir, temp_path)
+        except OSError as exc:
+            log_warning("Temporäre Einstellungsdatei konnte nicht entfernt werden: %s" % exc)
         raise
     return current
 
@@ -3058,7 +3285,8 @@ def save_console_settings(settings):
 def get_trash_retention_days():
     try:
         value = int(load_console_settings().get("trash_retention_days", TRASH_RETENTION_DAYS))
-    except Exception:
+    except Exception as exc:
+        log_warning("Papierkorb-Aufbewahrung konnte nicht gelesen werden: %s" % exc)
         value = TRASH_RETENTION_DAYS
     if value < 0:
         value = TRASH_RETENTION_DAYS
@@ -3075,19 +3303,19 @@ def set_trash_retention_days(days):
 
 def cleanup_trash():
     trash_base = os.path.realpath(TRASH_DIR)
-    os.makedirs(trash_base, exist_ok=True)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    makedirs_internal(trash_base, trash_base, exist_ok=True)
     if TRASH_RETENTION_DAYS <= 0:
         return 0
     cutoff = time.time() - (TRASH_RETENTION_DAYS * 86400)
     removed = 0
-    for name in os.listdir(trash_base):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-        path = assert_safe_internal_path(trash_base, os.path.join(trash_base, name))  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    for name in os.listdir(assert_safe_internal_path(trash_base, trash_base, require_exists=True)):
+        path = assert_safe_internal_path(trash_base, os.path.join(trash_base, name))
         try:
-            if os.path.getmtime(path) < cutoff:  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-                remove_safe_internal(trash_base, path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+            if os.path.getmtime(assert_safe_internal_path(trash_base, path, require_exists=True)) < cutoff:
+                remove_safe_internal(trash_base, path)
                 removed += 1
         except FileNotFoundError:
-            pass
+            continue
         except Exception as exc:
             append_console_note("Papierkorb-Bereinigung übersprungen: %s" % exc)
     return removed
@@ -3097,52 +3325,52 @@ def delete_or_trash_path(root_key, rel_path, permanent=False):
     full_path, rel_path = resolve_safe_path(root_key, rel_path)
     if rel_path == "/":
         raise ValueError("Der Wurzelordner kann nicht gelöscht werden.")
-    if not os.path.exists(full_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    if not path_exists_root(root_key, full_path):
         raise FileNotFoundError("Datei oder Ordner wurde nicht gefunden.")
     if root_key == "config" and rel_path.startswith("/.winomc"):
         raise ValueError("Interne WinoMC-Verzeichnisse können hier nicht gelöscht werden. Öffne bei Bedarf den Papierkorb direkt.")
 
     if permanent or root_key == "trash":
-        remove_safe(root_key, full_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-        meta_path = assert_safe_path(root_key, full_path + ".winomc-trash.json")  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-        if os.path.exists(meta_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+        remove_safe(root_key, full_path)
+        meta_path = assert_safe_path(root_key, full_path + ".winomc-trash.json")
+        if path_exists_root(root_key, meta_path):
             try:
-                remove_safe(root_key, meta_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-            except OSError:
-                pass
+                remove_safe(root_key, meta_path)
+            except OSError as exc:
+                log_warning("Papierkorb-Metadatei konnte nicht entfernt werden: %s" % exc)
         return {"ok": True, "permanent": True, "path": rel_path, "message": "Endgültig gelöscht: %s" % rel_path}
 
     cleanup_trash()
     trash_base = os.path.realpath(TRASH_DIR)
-    os.makedirs(trash_base, exist_ok=True)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    makedirs_internal(trash_base, trash_base, exist_ok=True)
     timestamp = time.strftime("%Y-%m-%d_%H-%M-%S")
     trash_name = safe_download_name("%s-%s-%s" % (timestamp, root_key, rel_path.replace("/", "__")), "winomc-trash")
-    target_path = assert_safe_internal_path(trash_base, os.path.join(trash_base, trash_name))  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    target_path = assert_safe_internal_path(trash_base, os.path.join(trash_base, trash_name))
     counter = 1
-    while os.path.exists(target_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-        target_path = assert_safe_internal_path(trash_base, os.path.join(trash_base, "%s-%s" % (trash_name, counter)))  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    while os.path.exists(assert_safe_internal_path(trash_base, target_path)):
+        target_path = assert_safe_internal_path(trash_base, os.path.join(trash_base, "%s-%s" % (trash_name, counter)))
         counter += 1
-    shutil.move(assert_safe_path(root_key, full_path), target_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    move_safe_root_to_internal(root_key, full_path, trash_base, target_path)
     meta = {"original_root": root_key, "original_path": rel_path, "deleted_at": timestamp, "trash_name": os.path.basename(target_path)}
     try:
-        with open_safe_internal(trash_base, target_path + ".winomc-trash.json", "w", encoding="utf-8") as handle:  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+        with open_safe_internal(trash_base, target_path + ".winomc-trash.json", "w", encoding="utf-8") as handle:
             json.dump(meta, handle, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+    except Exception as exc:
+        log_warning("Papierkorb-Metadaten konnten nicht geschrieben werden: %s" % exc)
     return {"ok": True, "permanent": False, "path": rel_path, "trash_path": target_path, "message": "In den Papierkorb verschoben: %s" % rel_path}
 
 
 
 def restore_from_trash(trash_rel_path, overwrite=False, destination_root=None, destination_path=None):
     trash_path, trash_rel_path = resolve_safe_path("trash", trash_rel_path)
-    if not os.path.exists(trash_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    if not path_exists_root("trash", trash_path):
         raise FileNotFoundError("Papierkorb-Eintrag wurde nicht gefunden.")
     if trash_rel_path == "/":
         raise ValueError("Der Papierkorb-Wurzelordner kann nicht wiederhergestellt werden.")
 
-    meta_path = assert_safe_path("trash", trash_path + ".winomc-trash.json")  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    if os.path.exists(meta_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-        with open_safe("trash", meta_path, "r", encoding="utf-8") as handle:  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    meta_path = assert_safe_path("trash", trash_path + ".winomc-trash.json")
+    if path_exists_root("trash", meta_path):
+        with open_safe("trash", meta_path, "r", encoding="utf-8") as handle:
             meta = json.load(handle)
     else:
         meta = {"original_root": "config", "original_path": "/" + os.path.basename(trash_path)}
@@ -3154,43 +3382,43 @@ def restore_from_trash(trash_rel_path, overwrite=False, destination_root=None, d
     if target_rel == "/":
         raise ValueError("Ein Papierkorb-Eintrag kann nicht direkt auf einen Wurzelordner wiederhergestellt werden.")
 
-    parent = assert_safe_path(target_root, os.path.dirname(target_path))  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    parent = assert_safe_path(target_root, os.path.dirname(target_path))
     if not os.path.isdir(parent):
-        os.makedirs(parent, exist_ok=True)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+        makedirs_root(target_root, parent, exist_ok=True)
 
-    if os.path.exists(target_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    if path_exists_root(target_root, target_path):
         if not overwrite:
             raise FileExistsError("Ziel existiert bereits. Wiederherstellen mit Überschreiben bestätigen.")
-        backup_path = make_file_backup(target_path, target_root, target_rel) if os.path.isfile(target_path) else None
-        remove_safe(target_root, target_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+        backup_path = make_file_backup(target_path, target_root, target_rel) if path_is_file_root(target_root, target_path) else None
+        remove_safe(target_root, target_path)
     else:
         backup_path = None
 
-    shutil.move(assert_safe_path("trash", trash_path), assert_safe_path(target_root, target_path))  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-    if os.path.exists(meta_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    move_safe_internal_to_root(allowed_root_base("trash"), trash_path, target_root, target_path)
+    if path_exists_root("trash", meta_path):
         try:
-            remove_safe("trash", meta_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-        except OSError:
-            pass
+            remove_safe("trash", meta_path)
+        except OSError as exc:
+            log_warning("Papierkorb-Metadatei konnte nach Wiederherstellung nicht entfernt werden: %s" % exc)
 
     return {"ok": True, "root": target_root, "path": target_rel, "backup_created": bool(backup_path), "backup_path": backup_path, "message": "Wiederhergestellt nach %s:%s" % (target_root, target_rel)}
 
 def empty_trash():
     trash_base = os.path.realpath(TRASH_DIR)
-    os.makedirs(trash_base, exist_ok=True)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    makedirs_internal(trash_base, trash_base, exist_ok=True)
     removed = 0
-    for name in list(os.listdir(trash_base)):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-        path = assert_safe_internal_path(trash_base, os.path.join(trash_base, name))  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+    for name in list(os.listdir(assert_safe_internal_path(trash_base, trash_base, require_exists=True))):
+        path = assert_safe_internal_path(trash_base, os.path.join(trash_base, name))
         try:
-            remove_safe_internal(trash_base, path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+            remove_safe_internal(trash_base, path)
             removed += 1
         except FileNotFoundError:
-            pass
+            continue
     return {"ok": True, "removed": removed, "message": "Papierkorb geleert."}
 
 def status_payload():
     env_keys = ["SERVER_NAME", "LEVEL_NAME", "VERSION", "BDS_AUTO_UPDATE", "SERVER_PORT", "SERVER_PORT_V6", "ENABLE_LAN_VISIBILITY", "ENABLE_BDS_V6BIND_FIX", "GAMEMODE", "DIFFICULTY", "ALLOW_CHEATS", "ALLOW_LIST", "MAX_PLAYERS", "TEXTUREPACK_REQUIRED", "PACKAGE_BACKUP_KEEP"]
-    return {"ok": True, "fifo_exists": os.path.exists(FIFO_PATH), "log_exists": os.path.exists(LOG_PATH), "env": {key: os.environ.get(key, "") for key in env_keys}, "roots": list_file_roots()}
+    return {"ok": True, "fifo_exists": os.path.exists(runtime_fifo_path()), "log_exists": os.path.exists(runtime_log_path()), "env": {key: os.environ.get(key, "") for key in env_keys}, "roots": list_file_roots()}
 
 def safe_header_value(value, fallback="application/octet-stream"):
     value = str(value or fallback)
@@ -3246,20 +3474,20 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def _send_file(self, file_path, download_name=None, content_type=None, cleanup=False):
-        file_path = assert_safe_download_path(file_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+        file_path = assert_safe_download_path(file_path)
         try:
-            if not os.path.isfile(file_path):  # lgtm[py/path-injection] codeql[py/path-injection] safe download path is limited to configured roots/temp.
+            if not os.path.isfile(file_path):
                 raise FileNotFoundError("Datei nicht gefunden.")
             download_name = safe_download_name(download_name or os.path.basename(file_path))
             content_type = safe_content_type(content_type or mimetypes.guess_type(file_path)[0])
-            size = os.path.getsize(file_path)  # lgtm[py/path-injection] codeql[py/path-injection] safe download path is limited to configured roots/temp.
+            size = os.path.getsize(assert_safe_download_path(file_path))
             self.send_response(200)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(size))
             self.send_header("Content-Disposition", safe_content_disposition_attachment(download_name))
             self.send_header("Cache-Control", "no-store")
             self.end_headers()
-            with open(assert_safe_download_path(file_path), "rb") as handle:  # lgtm[py/path-injection] codeql[py/path-injection] safe download path is limited to configured roots/temp.
+            with open_safe_download(file_path, "rb") as handle:
                 while True:
                     chunk = handle.read(1024 * 1024)
                     if not chunk:
@@ -3268,9 +3496,9 @@ class Handler(BaseHTTPRequestHandler):
         finally:
             if cleanup:
                 try:
-                    remove_safe_internal(tempfile.gettempdir(), file_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-                except OSError:
-                    pass
+                    remove_safe_internal(tempfile.gettempdir(), file_path)
+                except OSError as exc:
+                    log_warning("Temporärer Download konnte nicht bereinigt werden: %s" % exc)
 
     def _read_chunked_body(self, max_bytes):
         chunks = []
@@ -3302,14 +3530,13 @@ class Handler(BaseHTTPRequestHandler):
         return ""
 
     def _write_request_body_to_file(self, root_key, target_path, max_bytes):
-        target_path = assert_safe_path(root_key, target_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+        target_path = assert_safe_path(root_key, target_path)
         content_length = self.headers.get("Content-Length")
         upload_size = self.headers.get("X-WinoMC-Upload-Size")
-        parent = assert_safe_path(root_key, os.path.dirname(target_path))  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-        os.makedirs(parent, exist_ok=True)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-        fd, temp_path = tempfile.mkstemp(prefix=".winomc-upload-", dir=parent)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+        parent = assert_safe_path(root_key, os.path.dirname(target_path), require_exists=True)
+        makedirs_root(root_key, parent, exist_ok=True)
+        fd, temp_path = mkstemp_root(root_key, parent, prefix=".winomc-upload-")
         os.close(fd)
-        temp_path = assert_safe_path(root_key, temp_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
         try:
             with open_safe(root_key, temp_path, "wb") as handle:
                 if self.headers.get("Transfer-Encoding", "").lower() == "chunked":
@@ -3342,9 +3569,9 @@ class Handler(BaseHTTPRequestHandler):
             replace_safe(root_key, temp_path, target_path)
         except Exception:
             try:
-                remove_safe(root_key, temp_path)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
-            except OSError:
-                pass
+                remove_safe(root_key, temp_path)
+            except OSError as exc:
+                log_warning("Temporäre Upload-Datei konnte nicht bereinigt werden: %s" % exc)
             raise
 
     def _extract_command(self):
@@ -3407,7 +3634,7 @@ class Handler(BaseHTTPRequestHandler):
                 root_key = query.get("root", ["config"])[0]
                 rel_path = query.get("path", ["/"])[0]
                 file_path, _ = resolve_safe_path(root_key, rel_path)
-                if os.path.isdir(file_path):  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+                if path_is_dir_root(root_key, file_path):
                     raise ValueError("Ordner können nur als ZIP heruntergeladen werden.")
                 self._send_file(file_path, download_name=os.path.basename(file_path))
             except Exception as exc:
@@ -3448,7 +3675,7 @@ class Handler(BaseHTTPRequestHandler):
                 filename = query.get("filename", [self.headers.get("X-WinoMC-Filename", "upload.bin")])[0]
                 overwrite = parse_bool(query.get("overwrite", ["false"])[0], default=False)
                 target_path, target_rel_path = prepare_upload_target(root_key, dir_rel_path, filename, overwrite=overwrite)
-                backup_path = make_file_backup(target_path, root_key, target_rel_path) if os.path.exists(target_path) else None  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+                backup_path = make_file_backup(target_path, root_key, target_rel_path) if os.path.exists(target_path) else None
                 self._write_request_body_to_file(root_key, target_path, MAX_UPLOAD_BYTES)
                 self._send_json(200, {"ok": True, "root": root_key, "path": target_rel_path, "filename": os.path.basename(target_path), "backup_created": bool(backup_path), "backup_path": backup_path, "message": "Datei hochgeladen."})
             except Exception as exc:
@@ -3467,7 +3694,7 @@ class Handler(BaseHTTPRequestHandler):
                 if len(raw) > MAX_JSON_UPLOAD_BYTES:
                     raise ValueError("JSON-Upload ist zu groß.")
                 target_path, target_rel_path = prepare_upload_target(root_key, dir_rel_path, filename, overwrite=overwrite)
-                backup_path = make_file_backup(target_path, root_key, target_rel_path) if os.path.exists(target_path) else None  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+                backup_path = make_file_backup(target_path, root_key, target_rel_path) if os.path.exists(target_path) else None
                 with open_safe(root_key, target_path, "wb") as handle:
                     handle.write(raw)
                 self._send_json(200, {"ok": True, "root": root_key, "path": target_rel_path, "filename": os.path.basename(target_path), "backup_created": bool(backup_path), "backup_path": backup_path, "message": "Datei hochgeladen."})
@@ -3571,17 +3798,17 @@ class Handler(BaseHTTPRequestHandler):
         for line in read_recent_lines(LOG_PATH, HISTORY_LIMIT):
             self._sse_send({"line": line})
         try:
-            position = os.path.getsize(LOG_PATH)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+            position = os.path.getsize(runtime_log_path())
         except OSError:
             position = 0
         last_heartbeat = time.time()
         while True:
             try:
-                size = os.path.getsize(LOG_PATH)  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+                size = os.path.getsize(runtime_log_path())
                 if size < position:
                     position = 0
                 if size > position:
-                    with open(LOG_PATH, "r", encoding="utf-8", errors="replace") as handle:  # lgtm[py/path-injection] codeql[py/path-injection] path was normalized and constrained with realpath/commonpath before filesystem access.
+                    with open_checked(runtime_log_path(), "r", encoding="utf-8", errors="replace") as handle:
                         handle.seek(position)
                         for line in handle:
                             self._sse_send({"line": line.rstrip("\n")})
@@ -3603,9 +3830,9 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     ensure_directories()
-    log_parent = os.path.realpath(os.path.dirname(LOG_PATH))
-    os.makedirs(log_parent, exist_ok=True)
-    with open_safe_internal(log_parent, LOG_PATH, "a", encoding="utf-8"):
+    log_path = runtime_log_path()
+    log_parent = ensure_parent_dir(log_path)
+    with open_checked(log_path, "a", encoding="utf-8"):
         pass
     httpd = ThreadingHTTPServer((HOST, PORT), Handler)
 
