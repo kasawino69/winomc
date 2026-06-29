@@ -5,6 +5,24 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.1.9
+
+#### Web Console / Layout
+
+* Live-Konsole im klassischen Layout robuster gegen ungünstige Browsergrößen gemacht.
+* Bedienelemente der Live-Konsole bleiben jetzt erreichbar, auch wenn das Fenster in den mittelbreiten Layoutbereich wechselt.
+* Console-Buttons laufen bei wenig Breite nicht mehr unterhalb des sichtbaren Dock-Bereichs aus dem Bild.
+* Console-Buttons bleiben auf einer horizontal scrollbaren Bedienleiste, statt den Header unkontrolliert nach unten zu vergrößern.
+* Eingabezeile und Logbereich werden innerhalb der festen Live-Konsole stabiler berechnet.
+* Eingeklappte Konsole wurde leicht erhöht, damit Kopfzeile und Bedienung nicht abgeschnitten werden.
+* Bei niedriger Fensterhöhe wird die Konsolenhöhe begrenzt, damit keine Bedienelemente aus dem sichtbaren Bereich rutschen.
+
+#### Maintenance
+
+* Version auf `WinoMCConsole/1.6.1.9` angehoben.
+* CodeQL-/Pfadsicherheitslogik aus 1.6.1.7 und der Dateiexplorer-Scrollfix aus 1.6.1.8 bleiben erhalten.
+* Änderung betrifft nur Layout/CSS der Live-Konsole.
+
 ### 1.6.1.8
 
 #### Web Console / Dateimanager
