@@ -5,6 +5,54 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.1.11
+
+#### UX / Adaptive Layout
+
+* Adaptive UX Engine für Mobile, Tablet und Desktop ergänzt.
+* Neue Darstellungsmodi in der Oberfläche:
+  * Auto
+  * Mobil
+  * Tablet
+  * Desktop
+* Auto-Modus erkennt Viewport, Touch-Fähigkeit, Pointer-Typ und Ausrichtung und wählt daraus das passende UX-Profil.
+* Die gewählte Darstellung wird lokal im Browser gespeichert.
+* Der bisherige Desktop-Modus bleibt erhalten, ist jetzt aber Teil des neuen Desktop-Profils.
+* Der Button „Desktop-Modus“ wechselt künftig sauber zwischen Desktop-Workbench und automatischer klassischer Ansicht.
+
+#### Mobile UX
+
+* Eigene Mobile-Ansicht für iPhone und Android vorbereitet.
+* Header, Navigation, Karten, Aktionen und Formulare wurden für kleine Touch-Displays angepasst.
+* Navigation wird auf Mobile als kompakte horizontale Touch-Navigation dargestellt.
+* Eingeklappte Sidebar kann auf Mobile nicht mehr als defekte vertikale Icon-Leiste hängen bleiben.
+* Live Console wird auf Mobile als kompakter Bottom-Sheet-Bereich behandelt.
+* iOS Safe-Area wird berücksichtigt, damit Inhalte und Bedienelemente nicht hinter Browser- oder Systemleisten verschwinden.
+* Hauptinhalt bleibt oberhalb der Live Console scrollbar.
+* Konsolenbedienung, Eingabefeld und Senden-Button bleiben erreichbar.
+
+#### Tablet UX
+
+* Eigene Tablet-Zwischenansicht für iPad, Android-Tablets und Touch-Laptops ergänzt.
+* Tablet-Navigation ist touchfreundlich und horizontal scrollbar.
+* Dashboard und Karten nutzen den verfügbaren Platz besser als Mobile, bleiben aber einfacher als die Desktop-Workbench.
+* Dateimanager nutzt auf größeren Tablets weiterhin eine geteilte Explorer-/Editor-Ansicht.
+* Live Console bleibt als stabiles Dock erreichbar, ohne den Inhalt unbrauchbar zu verdecken.
+
+#### Dateimanager / Mobile
+
+* Dateiliste wird auf Mobile als Kartenliste dargestellt statt als breite Tabelle.
+* Dateiaktionen bleiben auf kleinen Displays erreichbar und umbrechen kontrolliert.
+* Dateiname, Typ, Größe, Änderungsdatum und Aktionen bleiben auf Mobile lesbar.
+* Editor und Vollbild-Editor berücksichtigen die mobile Live Console.
+
+#### Maintenance
+
+* Version auf `WinoMCConsole/1.6.1.11` angehoben.
+* Lokale Syntaxprüfung mit `python3 -m py_compile` durchgeführt.
+* JavaScript-Syntaxprüfung mit `node --check` durchgeführt.
+* Bestehende CodeQL-/Security-Umbauten aus den vorherigen Versionen bleiben erhalten.
+
 ### 1.6.1.9
 
 #### Web Console / Layout

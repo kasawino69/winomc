@@ -111,7 +111,7 @@ INDEX_HTML = r"""<!doctype html>
     }
     body.console-compact { --console-height: 245px; }
     body.console-large { --console-height: 440px; }
-    body.console-collapsed { --console-height: 58px; }
+    body.console-collapsed { --console-height: 76px; }
     body.console-hidden { --console-height: 0px; }
     body.console-maximized { --console-height: min(84vh, 820px); }
     header {
@@ -217,19 +217,22 @@ INDEX_HTML = r"""<!doctype html>
     .file-row-actions button { padding: 6px 8px; font-size: 12px; }
     .editor-box { width: 100%; min-height: 390px; resize: vertical; border: 1px solid var(--border); background: #020617; color: #e5e7eb; border-radius: 12px; padding: 12px; font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; outline: none; }
     .file-meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-top: 8px; }
-    .console-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; height: var(--console-height); background: rgba(2, 6, 23, .96); border-top: 1px solid var(--border); box-shadow: 0 -20px 55px rgba(0, 0, 0, .42); backdrop-filter: blur(12px); transition: height .16s ease, transform .16s ease; }
+    .console-dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; height: var(--console-height); background: rgba(2, 6, 23, .96); border-top: 1px solid var(--border); box-shadow: 0 -20px 55px rgba(0, 0, 0, .42); backdrop-filter: blur(12px); transition: height .16s ease, transform .16s ease; overflow: hidden; }
     body.console-hidden .console-dock { transform: translateY(calc(100% - 42px)); height: 42px; }
     body.console-collapsed #log, body.console-collapsed .command-row, body.console-hidden #log, body.console-hidden .command-row { display: none; }
-    body.console-hidden .console-head p { display: none; }
-    .console-inner { max-width: 1500px; height: 100%; margin: 0 auto; padding: 10px 14px 12px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; }
-    .console-head { display: flex; gap: 10px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
-    .console-controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    body.console-hidden .console-head p, body.console-collapsed .console-head p { display: none; }
+    .console-inner { max-width: 1500px; height: 100%; min-height: 0; margin: 0 auto; padding: 10px 14px 12px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px; overflow: hidden; }
+    .console-head { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto); gap: 10px; justify-content: space-between; align-items: center; min-width: 0; }
+    .console-head > div:first-child { min-width: 0; }
+    .console-head h3, .console-head p { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .console-controls { min-width: 0; max-width: 100%; display: flex; gap: 8px; flex-wrap: nowrap; align-items: center; justify-content: flex-end; overflow-x: auto; overflow-y: hidden; padding-bottom: 2px; scrollbar-width: thin; }
+    .console-controls button { flex: 0 0 auto; white-space: nowrap; }
     #log { min-height: 0; overflow: auto; padding: 12px; background: #020617; border: 1px solid var(--border-soft); border-radius: 12px; white-space: pre-wrap; word-break: break-word; font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
     .line { min-height: 18px; }
     .line.command { color: #93c5fd; }
     .line.error { color: #fca5a5; }
     .line.ok { color: #86efac; }
-    .command-row { display: flex; gap: 8px; }
+    .command-row { display: flex; gap: 8px; min-height: 44px; flex: 0 0 auto; }
     .command-row input { flex: 1; }
     .modal-backdrop { display: none; position: fixed; inset: 0; z-index: 30; background: rgba(2, 6, 23, .76); align-items: center; justify-content: center; padding: 16px; }
     .modal-backdrop.open { display: flex; }
@@ -791,6 +794,40 @@ INDEX_HTML = r"""<!doctype html>
     }
 
 
+
+
+    /* v1.6.1.9 console viewport resilience
+       Keep the live-console controls reachable when the browser enters the
+       medium-width layout. Controls stay on a single horizontal scroll line
+       instead of wrapping below the visible dock area. */
+    @media (max-width: 1050px) {
+      .console-head {
+        grid-template-columns: minmax(0, 1fr);
+        align-items: stretch;
+      }
+      .console-controls {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .console-inner {
+        padding-inline: 12px;
+      }
+    }
+
+    @media (max-height: 760px) and (min-width: 721px) {
+      :root { --console-height: 300px; }
+      body.console-compact { --console-height: 225px; }
+      body.console-large { --console-height: 56vh; }
+      body.console-maximized { --console-height: 82vh; }
+    }
+
+    @media (max-height: 620px) and (min-width: 721px) {
+      :root { --console-height: 260px; }
+      body.console-compact { --console-height: 210px; }
+      .console-head p { display: none; }
+      .console-inner { gap: 6px; }
+    }
+
     @media (max-width: 1050px) { .layout { grid-template-columns: 1fr; padding: 10px; } body.sidebar-collapsed { --sidebar-width: 255px; } nav { position: static; height: auto; min-height: 0; display: flex; overflow-x: auto; gap: 6px; padding: 8px; border-radius: 12px; } .sidebar-toggle, .nav-title { display: none; } .tab-button { width: auto; min-width: max-content; } .grid, .grid-3, .file-manager-grid { grid-template-columns: 1fr; } .split-resizer { display: none; } .dashboard-grid { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); } }
     @media (max-width: 720px) { :root { --console-height: 310px; } body.console-compact { --console-height: 220px; } body.console-large { --console-height: 70vh; } body.console-maximized { --console-height: 82vh; } header { padding: 10px 12px; min-height: 46px; } header h1 { font-size: 15px; } header .status { font-size: 12px; } .layout { padding: 8px; gap: 10px; } .hero, .card { padding: 12px; border-radius: 12px; } .hero-actions button, .command-row button, .file-toolbar button, .file-toolbar input, .file-toolbar select { width: 100%; } .file-row-actions { flex-wrap: wrap; } .file-table th, .file-table td { padding: 8px; } .split-actions { grid-template-columns: 1fr; } .command-row { flex-direction: column; } .console-controls button { padding: 7px 9px; font-size: 12px; } .console-head { gap: 6px; } .console-head h3 { font-size: 14px; } .console-head p { display: none; } #log { font-size: 12px; } .editor-panel.editor-fullscreen { inset: 8px 8px calc(var(--console-height) + 10px) 8px; } .card.maximized { inset: 8px; } .dashboard-layout { grid-template-columns: 1fr; } }
 
@@ -1135,11 +1172,801 @@ INDEX_HTML = r"""<!doctype html>
     body.desktop-mode .desktop-icon {
       pointer-events: auto;
     }
+
+
+    /* v1.6.1.10 responsive classic + mobile UX fix
+       The collapsed sidebar rail is great on wide screens, but it must not
+       leak into the classic top-navigation breakpoint. On phones the live
+       console is reduced to a true bottom sheet with safe-area padding so the
+       page can scroll above it and all controls remain reachable. */
+    @media (max-width: 1050px) {
+      body:not(.desktop-mode) {
+        --sidebar-width: 255px;
+      }
+
+      body:not(.desktop-mode).sidebar-collapsed nav,
+      body:not(.desktop-mode) nav {
+        position: sticky !important;
+        top: 52px;
+        z-index: 7;
+        width: auto !important;
+        min-width: 0 !important;
+        max-height: none !important;
+        height: auto !important;
+        min-height: 0 !important;
+        display: flex !important;
+        grid-auto-rows: unset !important;
+        align-content: unset !important;
+        align-items: center !important;
+        gap: 6px !important;
+        padding: 8px !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        scrollbar-width: thin !important;
+        border-radius: 12px;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      body:not(.desktop-mode).sidebar-collapsed nav::-webkit-scrollbar,
+      body:not(.desktop-mode) nav::-webkit-scrollbar {
+        display: initial;
+        height: 8px;
+      }
+
+      body:not(.desktop-mode).sidebar-collapsed .nav-title,
+      body:not(.desktop-mode) .nav-title,
+      body:not(.desktop-mode).sidebar-collapsed .sidebar-toggle,
+      body:not(.desktop-mode) .sidebar-toggle {
+        display: none !important;
+      }
+
+      body:not(.desktop-mode).sidebar-collapsed .tab-button,
+      body:not(.desktop-mode) .tab-button {
+        width: auto !important;
+        min-width: max-content !important;
+        height: 46px !important;
+        min-height: 46px !important;
+        margin: 0 !important;
+        padding: 10px 13px !important;
+        display: inline-flex !important;
+        place-items: unset !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 8px !important;
+        overflow: visible !important;
+        font-size: 14px !important;
+        flex: 0 0 auto !important;
+      }
+
+      body:not(.desktop-mode).sidebar-collapsed .tab-button span:not(.icon),
+      body:not(.desktop-mode) .tab-button span:not(.icon) {
+        display: inline !important;
+      }
+
+      body:not(.desktop-mode).sidebar-collapsed .tab-button .icon,
+      body:not(.desktop-mode) .tab-button .icon {
+        width: 22px !important;
+        font-size: 18px !important;
+        line-height: 1 !important;
+      }
+
+      body:not(.desktop-mode).sidebar-collapsed .tab-button::after {
+        content: none !important;
+        display: none !important;
+      }
+    }
+
+    @media (max-width: 720px) {
+      :root {
+        --console-height: min(214px, 38dvh);
+        --workbench-radius: 12px;
+      }
+
+      html {
+        height: 100%;
+        overflow-y: auto;
+        -webkit-text-size-adjust: 100%;
+      }
+
+      body:not(.desktop-mode) {
+        min-height: 100dvh;
+        padding-bottom: calc(var(--console-height) + env(safe-area-inset-bottom, 0px) + 12px);
+        overflow-x: hidden;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      body:not(.desktop-mode).console-compact { --console-height: 150px; }
+      body:not(.desktop-mode).console-large { --console-height: min(360px, 54dvh); }
+      body:not(.desktop-mode).console-collapsed { --console-height: 82px; }
+      body:not(.desktop-mode).console-hidden { --console-height: 0px; }
+      body:not(.desktop-mode).console-maximized { --console-height: calc(100dvh - 64px); }
+
+      header {
+        min-height: 48px;
+        padding: 9px 10px;
+      }
+
+      header h1 {
+        font-size: 16px;
+      }
+
+      header .status {
+        max-width: 48%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 12px;
+      }
+
+      body:not(.desktop-mode) .layout {
+        padding: 8px;
+        gap: 10px;
+        max-width: none;
+      }
+
+      body:not(.desktop-mode) nav {
+        top: 48px !important;
+        margin: 0 -8px 2px;
+        border-left: 0;
+        border-right: 0;
+        border-radius: 0;
+        padding: 7px 8px !important;
+      }
+
+      body:not(.desktop-mode) .tab-button {
+        height: 44px !important;
+        min-height: 44px !important;
+        padding: 9px 11px !important;
+        font-size: 13px !important;
+      }
+
+      body:not(.desktop-mode) .hero,
+      body:not(.desktop-mode) .card {
+        padding: 12px;
+      }
+
+      body:not(.desktop-mode) .hero-top,
+      body:not(.desktop-mode) .card-header,
+      body:not(.desktop-mode) .dashboard-toolbar,
+      body:not(.desktop-mode) .setting-title {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      body:not(.desktop-mode) .hero-actions,
+      body:not(.desktop-mode) .actions,
+      body:not(.desktop-mode) .pill-group,
+      body:not(.desktop-mode) .editor-actions,
+      body:not(.desktop-mode) .file-toolbar,
+      body:not(.desktop-mode) .module-jump {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+      }
+
+      body:not(.desktop-mode) button,
+      body:not(.desktop-mode) input,
+      body:not(.desktop-mode) select,
+      body:not(.desktop-mode) textarea {
+        min-width: 0;
+        max-width: 100%;
+      }
+
+      body:not(.desktop-mode) .hero-actions button,
+      body:not(.desktop-mode) .actions button,
+      body:not(.desktop-mode) .pill-group button,
+      body:not(.desktop-mode) .file-toolbar button,
+      body:not(.desktop-mode) .file-toolbar input,
+      body:not(.desktop-mode) .file-toolbar select,
+      body:not(.desktop-mode) .editor-actions button {
+        width: 100%;
+      }
+
+      body:not(.desktop-mode) .file-manager-grid,
+      body:not(.desktop-mode) .grid,
+      body:not(.desktop-mode) .grid-3,
+      body:not(.desktop-mode) .dashboard-grid,
+      body:not(.desktop-mode) .dashboard-grid.auto,
+      body:not(.desktop-mode) .dashboard-add-row {
+        grid-template-columns: 1fr !important;
+      }
+
+      body:not(.desktop-mode) .file-table-wrap {
+        max-width: 100%;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      body:not(.desktop-mode) .file-table {
+        min-width: 680px;
+      }
+
+      body:not(.desktop-mode) .editor-box {
+        min-height: 280px;
+      }
+
+      body:not(.desktop-mode) .console-dock {
+        height: calc(var(--console-height) + env(safe-area-inset-bottom, 0px));
+        max-height: calc(100dvh - 54px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        overflow: hidden;
+        border-radius: 16px 16px 0 0;
+      }
+
+      body:not(.desktop-mode) .console-inner {
+        padding: 14px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+        grid-template-rows: auto minmax(48px, 1fr) auto;
+        gap: 7px;
+      }
+
+      body:not(.desktop-mode) .console-head {
+        grid-template-columns: 1fr;
+        gap: 7px;
+        align-items: stretch;
+      }
+
+      body:not(.desktop-mode) .console-head p {
+        display: none;
+      }
+
+      body:not(.desktop-mode) .console-controls {
+        width: 100%;
+        justify-content: flex-start;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 3px;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      body:not(.desktop-mode) .console-controls button {
+        flex: 0 0 auto;
+        width: auto;
+        min-height: 36px;
+        padding: 8px 10px;
+        font-size: 12px;
+      }
+
+      body:not(.desktop-mode) #log {
+        min-height: 48px;
+        font-size: 12px;
+        padding: 9px;
+      }
+
+      body:not(.desktop-mode) .command-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 7px;
+        min-height: 42px;
+      }
+
+      body:not(.desktop-mode) .command-row input {
+        width: 100%;
+        min-width: 0;
+        min-height: 42px;
+      }
+
+      body:not(.desktop-mode) .command-row button {
+        width: auto;
+        min-width: 76px;
+        min-height: 42px;
+        padding-inline: 12px;
+      }
+
+      body:not(.desktop-mode).console-collapsed .console-dock {
+        height: calc(82px + env(safe-area-inset-bottom, 0px));
+      }
+
+      body:not(.desktop-mode).console-collapsed .console-inner,
+      body:not(.desktop-mode).console-hidden .console-inner {
+        grid-template-rows: auto;
+        align-content: start;
+      }
+
+      body:not(.desktop-mode).console-hidden .console-dock {
+        transform: translateY(calc(100% - 44px));
+        height: calc(44px + env(safe-area-inset-bottom, 0px));
+      }
+
+      body:not(.desktop-mode) .modal-backdrop {
+        align-items: end;
+        padding: 10px;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+      }
+
+      body:not(.desktop-mode) .modal {
+        width: 100%;
+        max-height: calc(100dvh - 24px);
+        overflow: auto;
+      }
+    }
+
+    @media (max-width: 430px) {
+      body:not(.desktop-mode) header .status span:last-child {
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      body:not(.desktop-mode) .console-secondary-controls button[data-console-size="large"] {
+        display: none;
+      }
+
+      body:not(.desktop-mode) .command-row {
+        grid-template-columns: 1fr;
+      }
+
+      body:not(.desktop-mode) .command-row button {
+        width: 100%;
+      }
+    }
+
+
+    /* v1.6.1.11 adaptive UX profiles
+       One codebase, three device-specific shells. Auto mode switches between
+       Mobile, Tablet and Desktop based on viewport, touch capability and
+       pointer type. Manual mode can still be selected by the user. */
+    .ux-profile-control {
+      gap: 8px;
+      min-height: 42px;
+      padding: 0 2px;
+      color: var(--muted-2);
+    }
+
+    .ux-profile-control select {
+      min-width: 126px;
+      height: 42px;
+      padding: 8px 10px;
+    }
+
+    body.ux-mobile:not(.desktop-mode),
+    body.ux-tablet:not(.desktop-mode) {
+      overflow-x: hidden;
+      overscroll-behavior-y: contain;
+    }
+
+    body.ux-mobile:not(.desktop-mode) {
+      --console-height: min(188px, 34dvh);
+      --workbench-radius: 12px;
+      min-height: 100dvh;
+      padding-bottom: calc(var(--console-height) + env(safe-area-inset-bottom, 0px) + 18px);
+      font-size: 15px;
+      -webkit-text-size-adjust: 100%;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-compact { --console-height: 140px; }
+    body.ux-mobile:not(.desktop-mode).console-large { --console-height: min(320px, 52dvh); }
+    body.ux-mobile:not(.desktop-mode).console-collapsed { --console-height: 62px; }
+    body.ux-mobile:not(.desktop-mode).console-hidden { --console-height: 0px; }
+    body.ux-mobile:not(.desktop-mode).console-maximized { --console-height: calc(100dvh - 58px); }
+
+    body.ux-mobile:not(.desktop-mode) header {
+      min-height: 48px;
+      padding: 8px 10px;
+      gap: 8px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) header h1 {
+      max-width: 58vw;
+      font-size: 15px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) header .status {
+      max-width: 38vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 12px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .layout {
+      display: block;
+      width: 100%;
+      max-width: none;
+      padding: 8px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) nav {
+      position: sticky !important;
+      top: 48px !important;
+      z-index: 30;
+      display: flex !important;
+      width: auto !important;
+      height: auto !important;
+      min-height: 0 !important;
+      margin: 0 -8px 10px;
+      padding: 7px 8px !important;
+      gap: 6px !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      border-left: 0;
+      border-right: 0;
+      border-radius: 0;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .nav-title,
+    body.ux-mobile:not(.desktop-mode) .sidebar-toggle {
+      display: none !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).sidebar-collapsed .tab-button,
+    body.ux-mobile:not(.desktop-mode) .tab-button {
+      width: auto !important;
+      min-width: 62px !important;
+      height: 48px !important;
+      min-height: 48px !important;
+      margin: 0 !important;
+      padding: 7px 10px !important;
+      display: inline-grid !important;
+      grid-template-rows: auto auto;
+      place-items: center;
+      gap: 2px !important;
+      flex: 0 0 auto !important;
+      font-size: 11px !important;
+      line-height: 1.05;
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    body.ux-mobile:not(.desktop-mode).sidebar-collapsed .tab-button span:not(.icon),
+    body.ux-mobile:not(.desktop-mode) .tab-button span:not(.icon) {
+      display: block !important;
+      font-size: 11px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).sidebar-collapsed .tab-button::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .tab-button .icon {
+      width: auto !important;
+      font-size: 20px !important;
+      line-height: 1;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .content,
+    body.ux-mobile:not(.desktop-mode) .tab-panel.active {
+      gap: 10px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .hero,
+    body.ux-mobile:not(.desktop-mode) .card {
+      padding: 12px;
+      border-radius: 13px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .hero-top,
+    body.ux-mobile:not(.desktop-mode) .card-header,
+    body.ux-mobile:not(.desktop-mode) .dashboard-toolbar,
+    body.ux-mobile:not(.desktop-mode) .setting-title {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .hero-actions,
+    body.ux-mobile:not(.desktop-mode) .actions,
+    body.ux-mobile:not(.desktop-mode) .pill-group,
+    body.ux-mobile:not(.desktop-mode) .file-toolbar,
+    body.ux-mobile:not(.desktop-mode) .editor-actions,
+    body.ux-mobile:not(.desktop-mode) .module-jump {
+      display: grid !important;
+      grid-template-columns: 1fr;
+      width: 100%;
+      gap: 8px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) button,
+    body.ux-mobile:not(.desktop-mode) input,
+    body.ux-mobile:not(.desktop-mode) select,
+    body.ux-mobile:not(.desktop-mode) textarea {
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      min-height: 44px;
+      font-size: 15px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .ux-profile-control {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: stretch;
+      width: 100%;
+      min-height: 0;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .grid,
+    body.ux-mobile:not(.desktop-mode) .grid-3,
+    body.ux-mobile:not(.desktop-mode) .dashboard-grid,
+    body.ux-mobile:not(.desktop-mode) .dashboard-grid.auto,
+    body.ux-mobile:not(.desktop-mode) .dashboard-layout,
+    body.ux-mobile:not(.desktop-mode) .dashboard-add-row,
+    body.ux-mobile:not(.desktop-mode) .file-manager-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .split-resizer {
+      display: none !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-table {
+      min-width: 0 !important;
+      width: 100%;
+      border-spacing: 0;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-table thead {
+      display: none;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-table,
+    body.ux-mobile:not(.desktop-mode) .file-table tbody,
+    body.ux-mobile:not(.desktop-mode) .file-table tr,
+    body.ux-mobile:not(.desktop-mode) .file-table td {
+      display: block;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-table tr {
+      margin: 0 0 10px;
+      padding: 10px;
+      border: 1px solid rgba(51, 65, 85, .78);
+      border-radius: 14px;
+      background: rgba(15, 23, 42, .82);
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-table td {
+      border: 0;
+      padding: 6px 0;
+      min-height: 0;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-table td[data-label]::before {
+      content: attr(data-label);
+      display: block;
+      margin-bottom: 3px;
+      color: var(--muted-2);
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-name-button {
+      justify-content: flex-start;
+      text-align: left;
+      white-space: normal;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-row-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .file-row-actions button {
+      width: 100%;
+      min-height: 40px;
+      padding: 8px 9px;
+      font-size: 13px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-box {
+      min-height: 42dvh;
+      resize: vertical;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen {
+      position: fixed;
+      inset: 8px 8px calc(var(--console-height) + env(safe-area-inset-bottom, 0px) + 10px) 8px;
+      z-index: 50;
+      overflow: auto;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-dock {
+      height: calc(var(--console-height) + env(safe-area-inset-bottom, 0px));
+      max-height: calc(100dvh - 52px);
+      border-radius: 16px 16px 0 0;
+      overflow: hidden;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-inner {
+      padding: 14px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+      grid-template-rows: auto minmax(40px, 1fr) auto;
+      gap: 7px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-head {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 7px;
+      align-items: stretch;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-head p {
+      display: none;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-controls {
+      width: 100%;
+      justify-content: flex-start;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding-bottom: 3px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-controls button {
+      flex: 0 0 auto;
+      width: auto;
+      min-width: auto;
+      min-height: 34px;
+      padding: 7px 9px;
+      font-size: 12px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) #log {
+      min-height: 40px;
+      font-size: 12px;
+      padding: 8px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .command-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 7px;
+      min-height: 42px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .command-row input {
+      width: 100%;
+      min-height: 42px;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .command-row button {
+      width: auto;
+      min-width: 78px;
+      min-height: 42px;
+      padding-inline: 12px;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-dock {
+      height: calc(62px + env(safe-area-inset-bottom, 0px));
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-dock {
+      transform: translateY(calc(100% - 46px));
+      height: calc(46px + env(safe-area-inset-bottom, 0px));
+    }
+
+    @media (max-width: 430px) {
+      body.ux-mobile:not(.desktop-mode) .command-row {
+        grid-template-columns: 1fr;
+      }
+      body.ux-mobile:not(.desktop-mode) .command-row button {
+        width: 100%;
+      }
+      body.ux-mobile:not(.desktop-mode) .file-row-actions {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    body.ux-tablet:not(.desktop-mode) {
+      --console-height: min(280px, 34dvh);
+      padding-bottom: calc(var(--console-height) + env(safe-area-inset-bottom, 0px) + 14px);
+    }
+
+    body.ux-tablet:not(.desktop-mode).console-compact { --console-height: 205px; }
+    body.ux-tablet:not(.desktop-mode).console-large { --console-height: min(390px, 48dvh); }
+    body.ux-tablet:not(.desktop-mode).console-collapsed { --console-height: 76px; }
+    body.ux-tablet:not(.desktop-mode).console-hidden { --console-height: 0px; }
+    body.ux-tablet:not(.desktop-mode).console-maximized { --console-height: calc(100dvh - 68px); }
+
+    body.ux-tablet:not(.desktop-mode) .layout {
+      grid-template-columns: 1fr;
+      max-width: 1180px;
+      padding: 12px;
+    }
+
+    body.ux-tablet:not(.desktop-mode) nav {
+      position: sticky !important;
+      top: 52px;
+      z-index: 25;
+      height: auto !important;
+      min-height: 0 !important;
+      display: flex !important;
+      gap: 7px !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body.ux-tablet:not(.desktop-mode) .sidebar-toggle,
+    body.ux-tablet:not(.desktop-mode) .nav-title {
+      display: none !important;
+    }
+
+    body.ux-tablet:not(.desktop-mode).sidebar-collapsed .tab-button,
+    body.ux-tablet:not(.desktop-mode) .tab-button {
+      width: auto !important;
+      min-width: max-content !important;
+      height: 46px !important;
+      margin: 0 !important;
+      padding: 10px 13px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 8px !important;
+      flex: 0 0 auto !important;
+      font-size: 14px !important;
+    }
+
+    body.ux-tablet:not(.desktop-mode).sidebar-collapsed .tab-button span:not(.icon),
+    body.ux-tablet:not(.desktop-mode) .tab-button span:not(.icon) {
+      display: inline !important;
+      font-size: 14px !important;
+    }
+
+    body.ux-tablet:not(.desktop-mode).sidebar-collapsed .tab-button::after {
+      content: none !important;
+      display: none !important;
+    }
+
+    body.ux-tablet:not(.desktop-mode) .grid-3,
+    body.ux-tablet:not(.desktop-mode) .dashboard-grid.auto {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    body.ux-tablet:not(.desktop-mode) .dashboard-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    @media (min-width: 860px) {
+      body.ux-tablet:not(.desktop-mode) .file-manager-grid {
+        grid-template-columns: minmax(0, .92fr) 10px minmax(0, 1.08fr);
+      }
+      body.ux-tablet:not(.desktop-mode) .split-resizer {
+        display: block;
+      }
+    }
+
+    body.ux-tablet:not(.desktop-mode) .console-dock {
+      height: calc(var(--console-height) + env(safe-area-inset-bottom, 0px));
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      border-radius: 16px 16px 0 0;
+    }
+
+    body.ux-tablet:not(.desktop-mode) .console-inner {
+      padding-inline: 14px;
+      max-width: 1180px;
+    }
+
+    body.ux-tablet:not(.desktop-mode) .console-controls {
+      overflow-x: auto;
+      flex-wrap: nowrap;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body.ux-tablet:not(.desktop-mode) .file-table-wrap {
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    body.ux-desktop.desktop-mode .ux-profile-control {
+      display: inline-flex;
+    }
+
   </style>
 </head>
 <body>
   <header>
-    <h1>WinoMC Desktop Workbench</h1>
+    <h1 id="appTitle">WinoMC Desktop Workbench</h1>
     <div class="status"><span class="dot" id="statusDot"></span><span id="status">Verbinde...</span></div>
   </header>
 
@@ -1183,7 +2010,7 @@ INDEX_HTML = r"""<!doctype html>
           <div class="hero-actions">
             <button data-action-id="list">Spieler anzeigen</button>
             <button data-action-id="say">Nachricht</button>
-            <button type="button" class="primary" id="desktopModeToggle">Desktop-Modus</button><button type="button" class="soft" id="resetWorkbenchLayout">Layout zurücksetzen</button>
+            <button type="button" class="primary" id="desktopModeToggle">Desktop-Modus</button><label class="ux-profile-control status">Darstellung <select id="uxProfileSelect" aria-label="Darstellung"><option value="auto">Auto</option><option value="mobile">Mobil</option><option value="tablet">Tablet</option><option value="desktop">Desktop</option></select></label><button type="button" class="soft" id="resetWorkbenchLayout">Layout zurücksetzen</button>
           </div>
         </div>
       </section>
@@ -1341,6 +2168,7 @@ INDEX_HTML = r"""<!doctype html>
     const log = document.getElementById('log');
     const statusEl = document.getElementById('status');
     const statusDot = document.getElementById('statusDot');
+    const appTitle = document.getElementById('appTitle');
     const form = document.getElementById('commandForm');
     const input = document.getElementById('command');
     const modalBackdrop = document.getElementById('modalBackdrop');
@@ -1409,6 +2237,7 @@ INDEX_HTML = r"""<!doctype html>
     const desktopTaskButtons = document.getElementById('desktopTaskButtons');
     const desktopExitButton = document.getElementById('desktopExitButton');
     const desktopClock = document.getElementById('desktopClock');
+    const uxProfileSelect = document.getElementById('uxProfileSelect');
 
     const STORE_DASHBOARD = 'winomcDashboardActionsV3';
     const STORE_COLUMNS = 'winomcDashboardColumnsV1';
@@ -1423,6 +2252,7 @@ INDEX_HTML = r"""<!doctype html>
     const STORE_DESKTOP_WINDOWS = 'winomcDesktopWindowsV1';
     const STORE_DESKTOP_POSITIONS = 'winomcDesktopPositionsV1';
     const STORE_DESKTOP_CONSOLE_RECT = 'winomcDesktopConsoleRectV1';
+    const STORE_UX_PROFILE = 'winomcUxProfileV1';
     const STORE_WEB_WRITE_LOCK = 'winomcWebWriteLockV1';
     const MAX_JSON_UPLOAD_SIZE = 48 * 1024 * 1024;
 
@@ -1837,6 +2667,11 @@ INDEX_HTML = r"""<!doctype html>
         }
 
         actionsTd.appendChild(actions);
+        nameTd.dataset.label = 'Name';
+        typeTd.dataset.label = 'Typ';
+        sizeTd.dataset.label = 'Größe';
+        modifiedTd.dataset.label = 'Geändert';
+        actionsTd.dataset.label = 'Aktionen';
         tr.append(nameTd, typeTd, sizeTd, modifiedTd, actionsTd);
         fileTableBody.appendChild(tr);
       });
@@ -2322,13 +3157,15 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function resetWorkbench() {
-      ['winomcConsoleHeightV1','winomcConsoleSizeV1','winomcSidebarCollapsedV1','winomcFilesSplitV1','winomcHiddenCardsV1','winomcEditorFontV1','winomcEditorWrapV1','winomcDesktopModeV1','winomcDesktopWindowsV1','winomcDesktopPositionsV1','winomcDesktopConsoleRectV1'].forEach(key => localStorage.removeItem(key));
+      ['winomcConsoleHeightV1','winomcConsoleSizeV1','winomcSidebarCollapsedV1','winomcFilesSplitV1','winomcHiddenCardsV1','winomcEditorFontV1','winomcEditorWrapV1','winomcDesktopModeV1','winomcDesktopWindowsV1','winomcDesktopPositionsV1','winomcDesktopConsoleRectV1','winomcUxProfileV1'].forEach(key => localStorage.removeItem(key));
       document.documentElement.style.removeProperty('--console-height');
       document.documentElement.style.removeProperty('--files-left-width');
-      document.body.classList.remove('sidebar-collapsed', 'console-collapsed', 'console-hidden', 'console-maximized', 'console-compact', 'console-large', 'has-maximized-card', 'desktop-mode');
+      document.body.classList.remove('sidebar-collapsed', 'console-collapsed', 'console-hidden', 'console-maximized', 'console-compact', 'console-large', 'has-maximized-card', 'desktop-mode', 'ux-auto', 'ux-mobile', 'ux-tablet', 'ux-desktop');
       document.querySelectorAll('.card').forEach(card => { card.style.display = ''; card.classList.remove('collapsed', 'maximized'); }); document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('desktop-open', 'desktop-minimized', 'desktop-maximized'));
+      localStorage.setItem(STORE_UX_PROFILE, 'auto');
       applyConsoleSize('normal');
       applyEditorPrefs();
+      applyAdaptiveUx();
       alert('Workbench-Layout zurückgesetzt.');
     }
 
@@ -2597,10 +3434,12 @@ INDEX_HTML = r"""<!doctype html>
       desktopStartMenu.appendChild(classic);
     }
 
-    function setDesktopMode(enabled) {
+    function setDesktopMode(enabled, options = {}) {
       document.body.classList.toggle('desktop-mode', enabled);
       if (enabled) clearDesktopBlockingOverlays();
       localStorage.setItem(STORE_DESKTOP_MODE, enabled ? 'true' : 'false');
+      if (!options.adaptive) localStorage.setItem(STORE_UX_PROFILE, enabled ? 'desktop' : 'auto');
+      if (uxProfileSelect) uxProfileSelect.value = localStorage.getItem(STORE_UX_PROFILE) || 'auto';
       if (desktopModeToggle) desktopModeToggle.textContent = enabled ? 'Klassische Ansicht' : 'Desktop-Modus';
       setConsoleMode(localStorage.getItem(STORE_CONSOLE_SIZE) || 'normal');
       if (enabled) {
@@ -2622,12 +3461,84 @@ INDEX_HTML = r"""<!doctype html>
     }
 
     function toggleDesktopMode() {
-      setDesktopMode(!document.body.classList.contains('desktop-mode'));
+      setUxProfile(document.body.classList.contains('desktop-mode') ? 'auto' : 'desktop');
     }
 
     function updateDesktopClock() {
       if (!desktopClock) return;
       desktopClock.textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function sanitizeUxProfile(value) {
+      return ['auto', 'mobile', 'tablet', 'desktop'].includes(value) ? value : 'auto';
+    }
+
+    function detectUxProfile() {
+      const width = Math.max(document.documentElement.clientWidth || 0, window.innerWidth || 0);
+      const height = Math.max(document.documentElement.clientHeight || 0, window.innerHeight || 0);
+      const coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      const noHover = window.matchMedia && window.matchMedia('(hover: none)').matches;
+      const touchPoints = Number(navigator.maxTouchPoints || navigator.msMaxTouchPoints || 0);
+      const touchDevice = coarsePointer || noHover || touchPoints > 0;
+      const portrait = height >= width;
+
+      if (width <= 760 || (touchDevice && portrait && width <= 900) || (touchDevice && height <= 760 && width <= 930)) return 'mobile';
+      if (width <= 1180 || (touchDevice && width <= 1400)) return 'tablet';
+      return 'desktop';
+    }
+
+    function currentUxPreference() {
+      return sanitizeUxProfile(localStorage.getItem(STORE_UX_PROFILE) || 'auto');
+    }
+
+    function updateUxProfileControl(preference, activeProfile) {
+      if (uxProfileSelect) uxProfileSelect.value = preference;
+      document.body.dataset.uxPreference = preference;
+      document.body.dataset.uxProfile = activeProfile;
+      if (appTitle) appTitle.textContent = activeProfile === 'mobile' ? 'WinoMC Mobile' : (activeProfile === 'tablet' ? 'WinoMC Tablet' : 'WinoMC Desktop Workbench');
+      if (desktopModeToggle) desktopModeToggle.textContent = activeProfile === 'desktop' ? 'Klassische Ansicht' : 'Desktop-Modus';
+    }
+
+    function applyAdaptiveUx() {
+      const preference = currentUxPreference();
+      const activeProfile = preference === 'auto' ? detectUxProfile() : preference;
+      document.body.classList.toggle('ux-auto', preference === 'auto');
+      document.body.classList.toggle('ux-mobile', activeProfile === 'mobile');
+      document.body.classList.toggle('ux-tablet', activeProfile === 'tablet');
+      document.body.classList.toggle('ux-desktop', activeProfile === 'desktop');
+      updateUxProfileControl(preference, activeProfile);
+
+      if (activeProfile === 'desktop') {
+        if (!document.body.classList.contains('desktop-mode')) setDesktopMode(true, { adaptive: true });
+      } else {
+        if (document.body.classList.contains('desktop-mode')) setDesktopMode(false, { adaptive: true });
+        // The collapsed desktop rail must never leak into touch profiles.
+        if (activeProfile === 'mobile' || activeProfile === 'tablet') {
+          document.body.classList.remove('has-maximized-card');
+          document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('desktop-open', 'desktop-minimized', 'desktop-maximized'));
+          document.querySelectorAll('.card').forEach(card => card.classList.remove('maximized'));
+        }
+      }
+    }
+
+    function setUxProfile(profile) {
+      const next = sanitizeUxProfile(profile);
+      localStorage.setItem(STORE_UX_PROFILE, next);
+      applyAdaptiveUx();
+    }
+
+    let adaptiveUxResizeTimer = null;
+    function scheduleAdaptiveUx() {
+      window.clearTimeout(adaptiveUxResizeTimer);
+      adaptiveUxResizeTimer = window.setTimeout(applyAdaptiveUx, 120);
+    }
+
+    function initAdaptiveUx() {
+      if (!localStorage.getItem(STORE_UX_PROFILE)) localStorage.setItem(STORE_UX_PROFILE, 'auto');
+      if (uxProfileSelect) uxProfileSelect.addEventListener('change', () => setUxProfile(uxProfileSelect.value));
+      window.addEventListener('resize', scheduleAdaptiveUx, { passive: true });
+      window.addEventListener('orientationchange', scheduleAdaptiveUx, { passive: true });
+      applyAdaptiveUx();
     }
 
     function initDesktopWorkbench() {
@@ -2646,12 +3557,11 @@ INDEX_HTML = r"""<!doctype html>
       });
       setInterval(updateDesktopClock, 15000);
       updateDesktopClock();
-      if (localStorage.getItem(STORE_DESKTOP_MODE) === 'true') setDesktopMode(true);
     }
 
     function connectLogs() { const source = new EventSource('./api/logs'); source.onopen = () => { statusEl.textContent = 'Live verbunden'; statusDot.classList.add('ok'); }; source.onmessage = event => { try { const data = JSON.parse(event.data); if (data.line) appendLine(data.line); } catch (_) {} }; source.onerror = () => { statusEl.textContent = 'Verbindung wird neu aufgebaut...'; statusDot.classList.remove('ok'); }; }
     applySidebarState(); applyConsoleSize(localStorage.getItem(STORE_CONSOLE_SIZE) || 'normal'); applyEditorPrefs(); initConsoleResize();
-    initDesktopConsoleWindow(); initFileSplitResize(); initCardChrome(); initDesktopWorkbench(); renderDashboard(); connectLogs(); loadStatus();
+    initDesktopConsoleWindow(); initFileSplitResize(); initCardChrome(); initDesktopWorkbench(); initAdaptiveUx(); renderDashboard(); connectLogs(); loadStatus();
   </script>
 </body>
 </html>
@@ -3733,7 +4643,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.1.8"
+    server_version = "WinoMCConsole/1.6.1.11"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")
