@@ -6,6 +6,7 @@
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
 ### 1.6.14.8
+
 WinoMC Console Fehlerbehebungen
 
 ### 1.6.14.7
