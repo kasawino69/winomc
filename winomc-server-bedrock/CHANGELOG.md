@@ -5,6 +5,51 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.1.7
+
+#### Security / CodeQL
+
+* Weitere Reduzierung der offenen CodeQL-Meldungen im `winomc-console-server`.
+* Dateisystem-Zugriffe strukturell überarbeitet, damit geprüfte Pfade nicht mehr als rohe, request-beeinflusste Strings bis zu `open`, `listdir`, `stat`, `getsize`, `remove`, `replace`, `copy2`, `move` oder `mkstemp` weitergereicht werden.
+* Neue interne `VerifiedPath`-Pfadklasse ergänzt:
+  * Pfade werden weiterhin normalisiert und gegen erlaubte WinoMC-Root-Verzeichnisse geprüft.
+  * Symlink-Komponenten bleiben blockiert.
+  * Dateisystem-Sinks erhalten nun einen geprüften `PathLike`-Wrapper statt direkt den aus Request-Daten abgeleiteten String.
+* Root-, interne und Runtime-Pfadoperationen vereinheitlicht über:
+  * `verify_root_path(...)`
+  * `verify_internal_path(...)`
+  * `verify_runtime_path(...)`
+* Mehrere verbleibende `py/path-injection`-Flows aus den allgemeinen Dateioperationen entschärft, insbesondere bei:
+  * Datei öffnen
+  * Existenzprüfung
+  * Dateitypprüfung
+  * Verzeichnislisting
+  * Dateigröße und Stat-Informationen
+  * Ordnererstellung
+  * temporären Dateien
+  * Entfernen, Ersetzen, Kopieren und Verschieben
+* FIFO-Zugriff für Konsolenbefehle auf geprüften Runtime-Pfad umgestellt.
+* Dateierstellung weiter gehärtet: der sichere Open-Opener verwendet nun restriktive Rechte `0600` statt `0666`.
+
+#### Reliability
+
+* Unbenutzte lokale Variablen entfernt:
+  * `zip_path = None` im temporären ZIP-Zweig
+  * `log_parent` beim Start der Webkonsole
+* Temporäre ZIP-Erstellung, gespeicherter ZIP-Export, Upload, Download, Editor, Papierkorb und ZIP-Slip-Schutz erneut per Smoke-Test geprüft.
+* Datei erneut mit `python3 -m py_compile` syntaktisch geprüft.
+
+#### Maintenance
+
+* Keine CodeQL-/LGTM-Suppression-Kommentare verwendet.
+* Keine reine Alert-Unterdrückung.
+* Zentrale Sicherheitslogik klarer getrennt in:
+  * Pfadvalidierung
+  * geprüfte `PathLike`-Objekte
+  * eigentliche Dateisystemoperationen
+* Version auf `WinoMCConsole/1.6.1.7` angehoben.
+
+
 ### 1.6.1.6
 
 #### Security / CodeQL
