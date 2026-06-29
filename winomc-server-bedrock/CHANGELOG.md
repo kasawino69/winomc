@@ -5,6 +5,42 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.1.3
+
+#### Security / CodeQL
+
+* Echte Behebung der offenen CodeQL-Meldungen im `winomc-console-server`
+* Unsichere Datei- und Pfadoperationen im Web-Dateimanager überarbeitet
+* Schutz gegen Path-Traversal verbessert, insbesondere bei:
+  * Datei-Downloads
+  * Datei-Uploads
+  * Datei-Bearbeitung
+  * Datei-Löschung
+  * Papierkorb-Funktionen
+  * Wiederherstellung aus dem Papierkorb
+  * ZIP-Import und ZIP-Export
+* Pfadzugriffe werden nun konsequent gegen erlaubte WinoMC-Verzeichnisse geprüft
+* Zugriffe außerhalb der freigegebenen Datenbereiche werden blockiert
+* `..`-Traversal, ungültige Pfadsegmente und manipulierte Zielpfade werden abgewiesen
+* Schutz gegen ZIP-Slip beim Entpacken von Archiven ergänzt
+* Symlink-basierte Umgehungen im Dateimanager blockiert
+* Runtime-Dateipfade für Konsole, Log und FIFO stärker eingeschränkt
+
+#### Reliability
+
+* Leere `except: pass`-Blöcke entfernt
+* Fehlerbehandlung im `winomc-console-server` verbessert
+* Relevante Fehler werden nun sauber protokolliert oder kontrolliert behandelt
+* Stille Fehlerunterdrückung reduziert, um Debugging und Wartbarkeit zu verbessern
+
+#### Maintenance
+
+* Alte CodeQL-/LGTM-Suppression-Kommentare entfernt
+* CodeQL-Probleme nicht mehr nur kommentiert, sondern technisch behoben
+* Sicherheitsrelevante Hilfsfunktionen für sichere Pfadauflösung und Dateioperationen ergänzt
+* Keine beabsichtigten Änderungen am normalen Verhalten der Webkonsole
+* Keine Änderung an bestehenden Nutzeroptionen oder Add-on-Konfigurationen
+
 ### 1.6.1.2
 
 * CodeQL-Pfadwarnungen (`py/path-injection`) in der Web-Konsole gehärtet.
