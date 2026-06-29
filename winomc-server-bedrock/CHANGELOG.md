@@ -5,6 +5,31 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.14.3
+
+#### Mobile UX Hardening
+
+* Live Console auf Mobile weiter gehärtet:
+  * Der Größen-Ziehgriff wird auf Mobile vollständig deaktiviert.
+  * Der Ziehgriff erscheint auch im eingeklappten Zustand nicht mehr.
+  * Eingeklappte Live Console bleibt innerhalb der sichtbaren Browserfläche.
+  * iOS-/Browser-Safe-Area wird beim eingeklappten Zustand stärker berücksichtigt.
+  * Mobile nutzt weiterhin ausschließlich die Bedienflächen `Kompakt`, `Normal`, `Groß`, `Vollbild` und `Ausklappen`.
+
+#### Mobile Editor
+
+* Editor-Overlay auf Mobile modal abgesichert:
+  * Hintergrundinteraktionen werden blockiert, solange der Editor geöffnet ist.
+  * Ein eigener Backdrop verhindert versehentliche Klicks oder Scrollgesten auf die Seite hinter dem Editor.
+  * Editor bleibt als Vordergrund-Overlay nutzbar, ohne dass Datei-Explorer oder andere UI-Elemente im Hintergrund ausgelöst werden.
+
+#### Reliability
+
+* Bekannte Zustände gezielt gehärtet statt Layoutlogik erneut umzubauen.
+* Keine neuen Darstellungsmodi eingeführt.
+* Bestehendes Mobile-/PC-Verhalten aus 1.6.14.2 bleibt erhalten.
+* Version auf `WinoMCConsole/1.6.14.3` angehoben.
+
 ### 1.6.14.2
 
 #### UX / Mobile Live Console

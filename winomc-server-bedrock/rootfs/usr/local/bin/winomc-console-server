@@ -3686,6 +3686,180 @@ INDEX_HTML = r"""<!doctype html>
       font-size: 12px !important;
     }
 
+
+
+    /* v1.6.14.3 Mobile hardening
+       Scope: fix known mobile regressions without introducing new layout modes.
+       - Mobile never shows or uses the drag resize handle.
+       - Collapsed mobile console stays inside the visible viewport/safe area.
+       - Mobile editor behaves like a modal and blocks background interaction. */
+    body.ux-mobile:not(.desktop-mode) .console-resize-handle,
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-resize-handle,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-resize-handle,
+    body.ux-mobile:not(.desktop-mode).console-compact .console-resize-handle,
+    body.ux-mobile:not(.desktop-mode).console-large .console-resize-handle,
+    body.ux-mobile:not(.desktop-mode).console-maximized .console-resize-handle {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      touch-action: auto !important;
+      height: 0 !important;
+    }
+
+    @media (pointer: coarse) {
+      body:not(.desktop-mode) .console-resize-handle {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        touch-action: auto !important;
+        height: 0 !important;
+      }
+    }
+
+    body.ux-mobile:not(.desktop-mode) .console-resize-handle {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      touch-action: auto !important;
+      height: 0 !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed,
+    body.ux-mobile:not(.desktop-mode).console-hidden {
+      --console-height: 72px !important;
+      padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-bottom-gap, 0px)) !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-dock,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-dock {
+      position: fixed !important;
+      top: auto !important;
+      left: 8px !important;
+      right: 8px !important;
+      bottom: calc(12px + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-bottom-gap, 0px)) !important;
+      width: auto !important;
+      height: 72px !important;
+      min-height: 72px !important;
+      max-height: 72px !important;
+      border-radius: 16px !important;
+      overflow: hidden !important;
+      transform: none !important;
+      z-index: 105 !important;
+    }
+
+    body.ios-browser-shell.ux-mobile:not(.desktop-mode).console-collapsed .console-dock,
+    body.ios-browser-shell.ux-mobile:not(.desktop-mode).console-hidden .console-dock {
+      bottom: calc(18px + env(safe-area-inset-bottom, 0px) + max(24px, var(--mobile-browser-bottom-gap, 0px))) !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-inner,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-inner {
+      height: 72px !important;
+      min-height: 72px !important;
+      padding: 10px 12px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 10px !important;
+      overflow: hidden !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-head,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-head {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      gap: 10px !important;
+      min-height: 0 !important;
+      width: 100% !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-head > div:first-child,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-head > div:first-child {
+      min-width: 0 !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-head h3,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-head h3 {
+      margin: 0 !important;
+      white-space: nowrap !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-head p,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-head p,
+    body.ux-mobile:not(.desktop-mode).console-collapsed #log,
+    body.ux-mobile:not(.desktop-mode).console-hidden #log,
+    body.ux-mobile:not(.desktop-mode).console-collapsed .command-row,
+    body.ux-mobile:not(.desktop-mode).console-hidden .command-row {
+      display: none !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed .console-controls,
+    body.ux-mobile:not(.desktop-mode).console-hidden .console-controls {
+      flex: 0 0 auto !important;
+      width: auto !important;
+      overflow: visible !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode).console-collapsed #consoleCollapse,
+    body.ux-mobile:not(.desktop-mode).console-hidden #consoleCollapse {
+      display: inline-flex !important;
+      min-width: 92px !important;
+      min-height: 42px !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen {
+      pointer-events: auto !important;
+      touch-action: auto !important;
+      z-index: 180 !important;
+      isolation: isolate !important;
+    }
+
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-open::before,
+    body.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen::before,
+    body.editor-modal-open .editor-panel.editor-open::before,
+    body.editor-modal-open .editor-panel.editor-fullscreen::before {
+      pointer-events: auto !important;
+      z-index: -1 !important;
+      background: rgba(2, 6, 23, .78) !important;
+    }
+
+    body.editor-modal-open.ux-mobile:not(.desktop-mode) {
+      overflow: hidden !important;
+      overscroll-behavior: contain !important;
+    }
+
+    body.editor-modal-open.ux-mobile:not(.desktop-mode) .editor-panel.editor-open .editor-box,
+    body.editor-modal-open.ux-mobile:not(.desktop-mode) .editor-panel.editor-fullscreen .editor-box {
+      overscroll-behavior: contain !important;
+      touch-action: pan-y !important;
+    }
+
+
+
+    .editor-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 170;
+      display: none;
+      background: rgba(2, 6, 23, .72);
+      backdrop-filter: blur(3px);
+      touch-action: none;
+    }
+
+    body.editor-modal-open .editor-modal-backdrop {
+      display: block;
+    }
+
+    body.editor-modal-open .editor-panel.editor-open,
+    body.editor-modal-open .editor-panel.editor-fullscreen {
+      z-index: 180 !important;
+    }
+
 </style>
 </head>
 <body>
@@ -3894,7 +4068,10 @@ INDEX_HTML = r"""<!doctype html>
 
   <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true"><div class="modal"><h2 id="modalTitle">Wert eingeben</h2><p id="modalLabel">Bitte Wert eingeben.</p><input id="modalInput" autocomplete="off"><div class="modal-actions"><button type="button" class="soft" id="modalCancel">Abbrechen</button><button type="button" class="primary" id="modalSend">Senden</button></div></div></div>
 
-  <script>
+  
+<div class="editor-modal-backdrop" id="editorModalBackdrop" aria-hidden="true"></div>
+
+<script>
     const log = document.getElementById('log');
     const statusEl = document.getElementById('status');
     const statusDot = document.getElementById('statusDot');
@@ -6551,6 +6728,190 @@ INDEX_HTML = r"""<!doctype html>
       hardenMobileFileTools16142();
     });
 
+
+
+    /* v1.6.14.3 focused hardening layer
+       The earlier mobile console fixes introduced valid UX ideas, but mobile
+       browsers still exposed the drag handle in some collapsed states and the
+       editor backdrop could let touches reach the page behind it. This final
+       layer is deliberately narrow and only hardens those known states. */
+    (function hardenUx16143() {
+      const VERSION_16143 = '1.6.14.3';
+      const fullscreenStore = 'winomc.console.beforeFullscreen.1.6.14.3';
+
+      function mobileShell() {
+        return document.body.classList.contains('ux-mobile') && !document.body.classList.contains('desktop-mode');
+      }
+
+      function modeName() {
+        if (document.body.classList.contains('console-collapsed')) return 'collapsed';
+        if (document.body.classList.contains('console-hidden')) return 'hidden';
+        if (document.body.classList.contains('console-maximized')) return 'maximized';
+        if (document.body.classList.contains('console-compact')) return 'compact';
+        if (document.body.classList.contains('console-large')) return 'large';
+        return 'normal';
+      }
+
+      function forceHideMobileResizeHandle() {
+        if (!consoleResizeHandle) return;
+        if (mobileShell()) {
+          consoleResizeHandle.hidden = true;
+          consoleResizeHandle.setAttribute('aria-hidden', 'true');
+          consoleResizeHandle.style.display = 'none';
+          consoleResizeHandle.style.pointerEvents = 'none';
+          consoleResizeHandle.style.visibility = 'hidden';
+          consoleResizeHandle.style.height = '0px';
+        } else {
+          consoleResizeHandle.hidden = false;
+          consoleResizeHandle.removeAttribute('aria-hidden');
+          consoleResizeHandle.style.removeProperty('display');
+          consoleResizeHandle.style.removeProperty('pointer-events');
+          consoleResizeHandle.style.removeProperty('visibility');
+          consoleResizeHandle.style.removeProperty('height');
+        }
+      }
+
+      function syncCollapsedMobileConsole() {
+        if (!mobileShell()) return;
+        forceHideMobileResizeHandle();
+        if (document.body.classList.contains('console-collapsed') || document.body.classList.contains('console-hidden')) {
+          document.body.classList.remove('console-large', 'console-maximized', 'console-compact');
+          if (consoleCollapse) consoleCollapse.textContent = 'Ausklappen';
+        }
+      }
+
+      function updateFullscreenButtons() {
+        const isFull = document.body.classList.contains('console-maximized');
+        document.querySelectorAll('[data-console-size="fullscreen"]').forEach(button => {
+          button.textContent = isFull ? 'Normal' : 'Vollbild';
+          button.setAttribute('aria-pressed', isFull ? 'true' : 'false');
+          button.setAttribute('aria-label', isFull ? 'Live Console zur vorherigen Größe zurücksetzen' : 'Live Console im Vollbild öffnen');
+        });
+        document.querySelectorAll('[data-console-size="large"]').forEach(button => {
+          button.textContent = 'Groß';
+          button.setAttribute('aria-pressed', document.body.classList.contains('console-large') ? 'true' : 'false');
+        });
+      }
+
+      const previousSetConsoleMode = setConsoleMode;
+      setConsoleMode = function(mode) {
+        const requested = mode || 'normal';
+        if (mobileShell() && (requested === 'collapsed' || requested === 'hidden')) {
+          previousSetConsoleMode('collapsed');
+        } else {
+          previousSetConsoleMode(requested);
+        }
+        syncCollapsedMobileConsole();
+        updateFullscreenButtons();
+      };
+
+      function applySize(size) {
+        const requested = String(size || 'normal');
+        if (requested === 'fullscreen') {
+          if (document.body.classList.contains('console-maximized')) {
+            const previous = localStorage.getItem(fullscreenStore) || 'normal';
+            setConsoleMode(previous === 'maximized' || previous === 'fullscreen' ? 'normal' : previous);
+          } else {
+            const current = modeName();
+            localStorage.setItem(fullscreenStore, current === 'maximized' ? 'normal' : current);
+            setConsoleMode('maximized');
+          }
+          return;
+        }
+        if (requested === 'compact') setConsoleMode('compact');
+        else if (requested === 'large') setConsoleMode('large');
+        else if (requested === 'normal') setConsoleMode('normal');
+        else if (requested === 'collapsed' || requested === 'hidden') setConsoleMode('collapsed');
+      }
+
+      document.addEventListener('click', event => {
+        const button = event.target.closest?.('[data-console-size]');
+        if (!button) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+        applySize(button.dataset.consoleSize || 'normal');
+      }, true);
+
+      document.addEventListener('pointerdown', event => {
+        if (mobileShell() && event.target === consoleResizeHandle) {
+          event.preventDefault();
+          event.stopPropagation();
+          event.stopImmediatePropagation();
+          return;
+        }
+        const button = event.target.closest?.('[data-console-size]');
+        if (!button) return;
+        event.stopPropagation();
+      }, true);
+
+
+      const editorModalBackdrop16143 = document.getElementById('editorModalBackdrop');
+      if (editorModalBackdrop16143) {
+        ['pointerdown', 'touchstart', 'click', 'dblclick', 'contextmenu', 'wheel'].forEach(type => {
+          editorModalBackdrop16143.addEventListener(type, event => {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+          }, true);
+        });
+      }
+
+      function editorOpen() {
+        return !!(editorPanel && (editorPanel.classList.contains('editor-open') || editorPanel.classList.contains('editor-fullscreen')));
+      }
+
+      function syncEditorModalState() {
+        document.body.classList.toggle('editor-modal-open', editorOpen());
+      }
+
+      const previousOpenEditorOverlay = openEditorOverlay;
+      openEditorOverlay = function() {
+        previousOpenEditorOverlay();
+        syncEditorModalState();
+      };
+
+      const previousCloseEditorOverlay = closeEditorOverlay;
+      closeEditorOverlay = function() {
+        previousCloseEditorOverlay();
+        syncEditorModalState();
+      };
+
+      function blockBackgroundWhileEditorOpen(event) {
+        if (!mobileShell() || !editorOpen() || !editorPanel) return;
+        if (editorPanel.contains(event.target)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+      }
+
+      ['pointerdown', 'touchstart', 'click', 'dblclick', 'contextmenu', 'wheel'].forEach(type => {
+        document.addEventListener(type, blockBackgroundWhileEditorOpen, true);
+      });
+
+      if (editorPanel) {
+        new MutationObserver(syncEditorModalState).observe(editorPanel, { attributes: true, attributeFilter: ['class'] });
+      }
+
+      window.addEventListener('resize', () => {
+        forceHideMobileResizeHandle();
+        syncCollapsedMobileConsole();
+      }, { passive: true });
+
+      window.addEventListener('orientationchange', () => {
+        window.setTimeout(() => {
+          forceHideMobileResizeHandle();
+          syncCollapsedMobileConsole();
+        }, 250);
+      }, { passive: true });
+
+      forceHideMobileResizeHandle();
+      syncCollapsedMobileConsole();
+      syncEditorModalState();
+      updateFullscreenButtons();
+      console.info('[WinoMC UX] Mobile hardening loaded ' + VERSION_16143);
+    })();
+
 </script>
 </body>
 </html>
@@ -7806,7 +8167,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.14.2"
+    server_version = "WinoMCConsole/1.6.14.3"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")
