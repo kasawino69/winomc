@@ -5,6 +5,38 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.14
+
+#### UX / Navigation
+
+* PC-Workbench-Navigation im klassischen PC-Modus erneut stabilisiert.
+* Eingeklappte PC-Navigation hinterlässt keinen großen leeren Zwischenraum mehr.
+* PC-Workbench-Button wird nach dynamischen UI-Aufräumarbeiten erneut verdrahtet und bleibt funktionsfähig.
+
+#### Live Console
+
+* Neue Vollbild-Funktion für die Live Console ergänzt.
+* Vollbild funktioniert jetzt in klassischer PC-Ansicht, PC-Workbench und Mobile.
+* Erneuter Druck auf **Vollbild** kehrt zur vorherigen Konsolengröße zurück.
+* Im eingeklappten Zustand wird nur noch **Ausklappen** angezeigt; Kompakt, Normal, Groß und Anzeige leeren werden ausgeblendet.
+* Mobile Kompaktansicht leicht erhöht, damit Logzeilen und Eingabe besser erreichbar bleiben.
+
+#### Serverübersicht / Monitoring
+
+* Übersicht um Server-Metriken erweitert:
+  * Spieleranzeige aus dem letzten `list`-Output
+  * Arbeitsspeicher-Verbrauch
+  * Speicherplatz des `/config`-Datenbereichs
+  * System-Load als Zusatzinformation
+* Status-API um `metrics` erweitert.
+* Nach dem Befehl `list` wird die Spieleranzeige automatisch nachgeladen.
+
+#### Maintenance
+
+* Version auf `WinoMCConsole/1.6.14` angehoben.
+* Datei syntaktisch geprüft.
+* ZIP-Struktur für den Repo-Pfad geprüft.
+
 ### 1.6.13.2
 
 #### UX / Mobile Live Console

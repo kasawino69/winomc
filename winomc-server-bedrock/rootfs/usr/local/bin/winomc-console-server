@@ -3189,6 +3189,111 @@ INDEX_HTML = r"""<!doctype html>
       display: none !important;
     }
 
+  
+
+    /* v1.6.14 Server Overview + Console UX refinement
+       - Collapsed PC navigation no longer leaves a dead workspace gap.
+       - Console fullscreen is available in PC/classic/mobile and toggles back.
+       - Collapsed console exposes only the Ausklappen action.
+       - Overview gains player/RAM/storage cards. */
+    .server-overview-grid {
+      margin-top: 14px;
+    }
+    .metric-card code {
+      color: #bfdbfe;
+      font-size: 12px;
+      background: rgba(15, 23, 42, .52);
+      border: 1px solid rgba(51, 65, 85, .55);
+      border-radius: 6px;
+      padding: 1px 5px;
+    }
+    .metric-subline {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+    }
+
+    body.ux-desktop:not(.desktop-mode).sidebar-collapsed .layout {
+      grid-template-columns: 92px minmax(0, 1fr) !important;
+      max-width: 100% !important;
+    }
+    body.ux-desktop:not(.desktop-mode).sidebar-collapsed nav {
+      width: 78px !important;
+      min-width: 78px !important;
+      max-width: 78px !important;
+    }
+    body.ux-desktop:not(.desktop-mode).sidebar-collapsed main.content {
+      min-width: 0 !important;
+      width: 100% !important;
+    }
+
+    body.console-collapsed .console-secondary-controls,
+    body.console-hidden .console-secondary-controls {
+      display: inline-flex !important;
+      gap: 6px !important;
+      width: auto !important;
+    }
+    body.console-collapsed .console-secondary-controls button:not(#consoleCollapse),
+    body.console-hidden .console-secondary-controls button:not(#consoleCollapse),
+    body.console-collapsed #clearLog,
+    body.console-hidden #clearLog,
+    body.console-collapsed [data-console-size],
+    body.console-hidden [data-console-size],
+    body.console-collapsed .console-window-actions,
+    body.console-hidden .console-window-actions {
+      display: none !important;
+    }
+    body.console-collapsed #consoleCollapse,
+    body.console-hidden #consoleCollapse {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+
+    body:not(.desktop-mode).console-maximized {
+      --console-height: calc(100dvh - 16px) !important;
+      padding-bottom: 0 !important;
+      overflow: hidden !important;
+    }
+    body:not(.desktop-mode).console-maximized .console-dock {
+      position: fixed !important;
+      top: calc(8px + env(safe-area-inset-top, 0px)) !important;
+      left: calc(8px + env(safe-area-inset-left, 0px)) !important;
+      right: calc(8px + env(safe-area-inset-right, 0px)) !important;
+      bottom: calc(8px + env(safe-area-inset-bottom, 0px) + var(--mobile-browser-bottom-gap, 0px)) !important;
+      width: auto !important;
+      height: auto !important;
+      max-height: none !important;
+      border-radius: 18px !important;
+      z-index: 140 !important;
+      box-shadow: 0 28px 110px rgba(0, 0, 0, .76) !important;
+    }
+    body:not(.desktop-mode).console-maximized .console-inner {
+      max-width: none !important;
+      padding: 14px !important;
+    }
+    body:not(.desktop-mode).console-maximized #log {
+      min-height: 0 !important;
+      height: 100% !important;
+      max-height: none !important;
+    }
+
+    body.desktop-mode.console-maximized .console-dock {
+      z-index: 140 !important;
+    }
+
+    @media (max-width: 720px) {
+      .server-overview-grid {
+        margin-top: 10px;
+      }
+      body.ux-mobile:not(.desktop-mode).console-compact {
+        --console-height: min(254px, 46dvh) !important;
+      }
+      body.ux-mobile:not(.desktop-mode).console-compact #log {
+        max-height: 86px !important;
+      }
+    }
+
   </style>
 </head>
 <body>
@@ -3248,6 +3353,11 @@ INDEX_HTML = r"""<!doctype html>
           <div class="card"><div class="stat-label">Server</div><div class="stat-value" id="statServerName">-</div><p id="statLevelName">Welt: -</p></div>
           <div class="card"><div class="stat-label">Version</div><div class="stat-value" id="statVersion">-</div><p id="statRuntime">Runtime: native</p></div>
           <div class="card"><div class="stat-label">Netzwerk</div><div class="stat-value" id="statPorts">-</div><p id="statLan">LAN: -</p></div>
+        </div>
+        <div class="grid-3 server-overview-grid" id="serverOverviewMetrics">
+          <div class="card metric-card"><div class="stat-label">Spieler</div><div class="stat-value" id="statPlayers">-</div><p id="statPlayersHint">Aktuelle Spielerzahl aus dem letzten <code>list</code>-Output.</p></div>
+          <div class="card metric-card"><div class="stat-label">Arbeitsspeicher</div><div class="stat-value" id="statMemory">-</div><p id="statMemoryHint">Host-/Container-RAM laut System.</p></div>
+          <div class="card metric-card"><div class="stat-label">Speicherplatz</div><div class="stat-value" id="statDisk">-</div><p id="statDiskHint">Datenordner /config.</p></div>
         </div>
         <div class="grid">
           <div class="card">
@@ -3384,7 +3494,7 @@ INDEX_HTML = r"""<!doctype html>
   <section class="console-dock" aria-label="Live Console" id="consoleDock">
     <div class="console-resize-handle" id="consoleResizeHandle" title="Konsole größer oder kleiner ziehen"></div>
     <div class="console-inner">
-      <div class="console-head"><div><h3>Live Console</h3><p>Serverausgabe und freie Befehle bleiben immer erreichbar.</p></div><div class="console-controls"><span class="console-secondary-controls"><button class="soft" type="button" data-console-size="compact">Kompakt</button><button class="soft" type="button" data-console-size="normal">Normal</button><button class="soft" type="button" data-console-size="large">Groß</button><button class="soft" type="button" id="consoleCollapse">Einklappen</button><button class="ghost" type="button" id="clearLog">Anzeige leeren</button></span><span class="console-window-actions" aria-label="Fenstersteuerung"><button class="soft" type="button" id="consoleMinimize" title="Minimieren">–</button><button class="soft" type="button" id="consoleMaximize" title="Maximieren">□</button><button class="danger" type="button" id="consoleDesktopClose" title="Schließen">×</button></span></div></div>
+      <div class="console-head"><div><h3>Live Console</h3><p>Serverausgabe und freie Befehle bleiben immer erreichbar.</p></div><div class="console-controls"><span class="console-secondary-controls"><button class="soft" type="button" data-console-size="compact">Kompakt</button><button class="soft" type="button" data-console-size="normal">Normal</button><button class="soft" type="button" data-console-size="large">Groß</button><button class="soft" type="button" data-console-size="fullscreen">Vollbild</button><button class="soft" type="button" id="consoleCollapse">Einklappen</button><button class="ghost" type="button" id="clearLog">Anzeige leeren</button></span><span class="console-window-actions" aria-label="Fenstersteuerung"><button class="soft" type="button" id="consoleMinimize" title="Minimieren">–</button><button class="soft" type="button" id="consoleMaximize" title="Maximieren">□</button><button class="danger" type="button" id="consoleDesktopClose" title="Schließen">×</button></span></div></div>
       <div id="log" aria-live="polite"></div>
       <form id="commandForm" autocomplete="off" class="command-row"><input id="command" name="command" placeholder="Freien Befehl eingeben, z. B. list, say Hallo, gamerule keepinventory true" autofocus><button type="submit" class="primary">Senden</button></form>
     </div>
@@ -5725,7 +5835,126 @@ INDEX_HTML = r"""<!doctype html>
     refreshMobileConsoleLabels16132();
 
     initDesktopConsoleWindow(); initFileSplitResize(); initCardChrome(); initDesktopWorkbench(); initAdaptiveUx(); renderDashboard(); connectLogs(); loadStatus();
-  </script>
+  
+
+    /* v1.6.14 UX and metrics controllers */
+    const STORE_CONSOLE_BEFORE_FULLSCREEN_1614 = 'winomcConsoleBeforeFullscreenV1614';
+
+    function updateServerOverviewMetrics(data) {
+      const metrics = data && data.metrics ? data.metrics : {};
+      const players = metrics.players || {};
+      const memory = metrics.memory || {};
+      const disk = metrics.disk || {};
+      const loadavg = metrics.loadavg || {};
+      const playersEl = document.getElementById('statPlayers');
+      const playersHint = document.getElementById('statPlayersHint');
+      const memoryEl = document.getElementById('statMemory');
+      const memoryHint = document.getElementById('statMemoryHint');
+      const diskEl = document.getElementById('statDisk');
+      const diskHint = document.getElementById('statDiskHint');
+      if (playersEl) playersEl.textContent = players.label || '-';
+      if (playersHint) playersHint.textContent = players.online == null ? 'Noch kein aktueller list-Output im Log. „Spieler anzeigen“ aktualisiert die Anzeige.' : 'Online-Spieler laut letztem Server-list-Output.';
+      if (memoryEl) memoryEl.textContent = memory.label || '-';
+      if (memoryHint) memoryHint.textContent = memory.used_percent != null ? ('RAM belegt: ' + memory.used_percent + '% · Load: ' + (loadavg.label || '-')) : 'RAM-Daten nicht verfügbar.';
+      if (diskEl) diskEl.textContent = disk.label || '-';
+      if (diskHint) diskHint.textContent = disk.used_percent != null ? ('/config belegt: ' + disk.used_percent + '%') : 'Speicherplatz nicht verfügbar.';
+    }
+
+    const loadStatus_1614 = loadStatus;
+    loadStatus = async function() {
+      await loadStatus_1614();
+      updateServerOverviewMetrics(latestStatus || {});
+    };
+
+    function currentConsoleModeName1614() {
+      if (document.body.classList.contains('console-collapsed')) return 'collapsed';
+      if (document.body.classList.contains('console-hidden')) return 'hidden';
+      if (document.body.classList.contains('console-maximized')) return 'maximized';
+      if (document.body.classList.contains('console-compact')) return 'compact';
+      if (document.body.classList.contains('console-large')) return 'large';
+      return 'normal';
+    }
+
+    const setConsoleMode_1614 = setConsoleMode;
+    setConsoleMode = function(mode) {
+      const requested = mode || 'normal';
+      setConsoleMode_1614(requested);
+      const isFull = document.body.classList.contains('console-maximized');
+      document.querySelectorAll('[data-console-size="fullscreen"]').forEach(button => {
+        button.textContent = isFull ? 'Normal' : 'Vollbild';
+        button.setAttribute('aria-pressed', isFull ? 'true' : 'false');
+      });
+      document.querySelectorAll('[data-console-size="large"]').forEach(button => {
+        button.textContent = 'Groß';
+      });
+      if (consoleCollapse) consoleCollapse.textContent = (requested === 'collapsed' || requested === 'hidden') ? 'Ausklappen' : 'Einklappen';
+    };
+
+    function toggleConsoleFullscreen1614() {
+      if (document.body.classList.contains('console-maximized')) {
+        const previous = localStorage.getItem(STORE_CONSOLE_BEFORE_FULLSCREEN_1614) || 'normal';
+        setConsoleMode(previous === 'maximized' ? 'normal' : previous);
+        return;
+      }
+      const current = currentConsoleModeName1614();
+      localStorage.setItem(STORE_CONSOLE_BEFORE_FULLSCREEN_1614, current === 'maximized' ? 'normal' : current);
+      setConsoleMode('maximized');
+    }
+
+    document.querySelectorAll('[data-console-size]').forEach(button => {
+      if (button.dataset.consoleSize === 'fullscreen') {
+        button.addEventListener('click', event => {
+          event.preventDefault();
+          event.stopPropagation();
+          toggleConsoleFullscreen1614();
+        });
+      }
+    });
+
+    // Keep the PC-Workbench nav action deterministic after the nav was restored dynamically.
+    function wirePcWorkbenchNav1614() {
+      const pcButton = document.getElementById('pcWorkbenchNav');
+      if (!pcButton) return;
+      pcButton.type = 'button';
+      pcButton.onclick = event => {
+        event.preventDefault();
+        event.stopPropagation();
+        enterDesktopModeFromUser();
+      };
+    }
+    wirePcWorkbenchNav1614();
+    const ensurePcWorkbenchNav_1614 = ensurePcWorkbenchNav;
+    ensurePcWorkbenchNav = function() {
+      const button = ensurePcWorkbenchNav_1614();
+      wirePcWorkbenchNav1614();
+      return button;
+    };
+
+    // If the sidebar is collapsed on PC, the layout must reclaim the free space immediately.
+    const applySidebarState_1614 = applySidebarState;
+    applySidebarState = function() {
+      applySidebarState_1614();
+      document.body.classList.toggle('sidebar-rail-active', document.body.classList.contains('sidebar-collapsed'));
+    };
+
+    // Let the overview metrics refresh shortly after the user asks the server for player list.
+    const sendCommand_1614 = sendCommand;
+    sendCommand = async function(command) {
+      const result = await sendCommand_1614(command);
+      if (String(command || '').trim().toLowerCase() === 'list') {
+        window.setTimeout(() => loadStatus().catch(() => {}), 900);
+        window.setTimeout(() => loadStatus().catch(() => {}), 2200);
+      }
+      return result;
+    };
+
+    requestAnimationFrame(() => {
+      wirePcWorkbenchNav1614();
+      setConsoleMode(currentConsoleModeName1614());
+      loadStatus().catch(() => {});
+    });
+
+</script>
 </body>
 </html>
 """
@@ -6861,9 +7090,106 @@ def runtime_path_exists(candidate_path):
     return verify_runtime_path(candidate_path, require_exists=False, allow_missing=True).exists()
 
 
+def human_bytes(value):
+    try:
+        size = float(value)
+    except (TypeError, ValueError):
+        return "-"
+    units = ["B", "KB", "MB", "GB", "TB"]
+    index = 0
+    while size >= 1024 and index < len(units) - 1:
+        size /= 1024.0
+        index += 1
+    if index == 0:
+        return "%d %s" % (int(size), units[index])
+    return "%.1f %s" % (size, units[index])
+
+
+def read_meminfo_metrics():
+    metrics = {"available": None, "total": None, "used": None, "used_percent": None, "label": "-"}
+    try:
+        values = {}
+        with open("/proc/meminfo", "r", encoding="utf-8", errors="replace") as handle:
+            for line in handle:
+                if ":" not in line:
+                    continue
+                key, rest = line.split(":", 1)
+                match = re.search(r"(\d+)", rest)
+                if match:
+                    values[key] = int(match.group(1)) * 1024
+        total = values.get("MemTotal")
+        available = values.get("MemAvailable")
+        if total and available is not None:
+            used = max(0, total - available)
+            percent = round((used / total) * 100, 1) if total else None
+            metrics.update({"available": available, "total": total, "used": used, "used_percent": percent, "label": "%s / %s" % (human_bytes(used), human_bytes(total))})
+    except Exception as exc:
+        metrics["error"] = str(exc)
+    return metrics
+
+
+def disk_usage_metrics():
+    try:
+        usage = shutil.disk_usage(allowed_root_base("config"))
+        used = usage.total - usage.free
+        percent = round((used / usage.total) * 100, 1) if usage.total else None
+        return {"total": usage.total, "used": used, "free": usage.free, "used_percent": percent, "label": "%s frei" % human_bytes(usage.free)}
+    except Exception as exc:
+        return {"total": None, "used": None, "free": None, "used_percent": None, "label": "-", "error": str(exc)}
+
+
+def loadavg_metrics():
+    try:
+        one, five, fifteen = os.getloadavg()
+        return {"one": round(one, 2), "five": round(five, 2), "fifteen": round(fifteen, 2), "label": "%.2f / %.2f / %.2f" % (one, five, fifteen)}
+    except Exception as exc:
+        return {"one": None, "five": None, "fifteen": None, "label": "-", "error": str(exc)}
+
+
+def tail_runtime_log_text(max_bytes=262144):
+    try:
+        log_path = verify_runtime_path(runtime_log_path(), require_exists=True, allow_missing=False)
+        size = log_path.getsize()
+        with log_path.open("rb") as handle:
+            if size > max_bytes:
+                handle.seek(size - max_bytes)
+            data = handle.read(max_bytes)
+        return data.decode("utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+def player_metrics_from_log(max_players_env=""):
+    result = {"online": None, "max": None, "label": "unbekannt", "source": "log"}
+    try:
+        if str(max_players_env or "").strip():
+            result["max"] = int(str(max_players_env).strip())
+    except ValueError:
+        result["max"] = None
+    text = tail_runtime_log_text()
+    matches = list(re.finditer(r"There\s+are\s+(\d+)\s*/\s*(\d+)\s+players\s+online", text, re.IGNORECASE))
+    if matches:
+        match = matches[-1]
+        result["online"] = int(match.group(1))
+        result["max"] = int(match.group(2))
+    if result["online"] is not None and result["max"] is not None:
+        result["label"] = "%s / %s" % (result["online"], result["max"])
+    elif result["max"] is not None:
+        result["label"] = "? / %s" % result["max"]
+    return result
+
+
 def status_payload():
     env_keys = ["SERVER_NAME", "LEVEL_NAME", "VERSION", "BDS_AUTO_UPDATE", "SERVER_PORT", "SERVER_PORT_V6", "ENABLE_LAN_VISIBILITY", "ENABLE_BDS_V6BIND_FIX", "GAMEMODE", "DIFFICULTY", "ALLOW_CHEATS", "ALLOW_LIST", "MAX_PLAYERS", "TEXTUREPACK_REQUIRED", "PACKAGE_BACKUP_KEEP"]
-    return {"ok": True, "fifo_exists": runtime_path_exists(runtime_fifo_path()), "log_exists": runtime_path_exists(runtime_log_path()), "env": {key: os.environ.get(key, "") for key in env_keys}, "roots": list_file_roots()}
+    env = {key: os.environ.get(key, "") for key in env_keys}
+    metrics = {
+        "players": player_metrics_from_log(env.get("MAX_PLAYERS", "")),
+        "memory": read_meminfo_metrics(),
+        "disk": disk_usage_metrics(),
+        "loadavg": loadavg_metrics(),
+        "log_size": human_bytes(runtime_getsize(runtime_log_path())) if runtime_path_exists(runtime_log_path()) else "-",
+    }
+    return {"ok": True, "fifo_exists": runtime_path_exists(runtime_fifo_path()), "log_exists": runtime_path_exists(runtime_log_path()), "env": env, "roots": list_file_roots(), "metrics": metrics}
 
 def safe_header_value(value, fallback="application/octet-stream"):
     value = str(value or fallback)
@@ -6883,7 +7209,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.13.2"
+    server_version = "WinoMCConsole/1.6.14"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")
