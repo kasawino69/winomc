@@ -5,6 +5,28 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.14.4
+
+#### PC Workbench / Desktop-Härtung
+
+* Gezielt den blockierenden unsichtbaren Bereich in der PC-Workbench gehärtet.
+* Stale Classic-Layout-Zustände wie `has-maximized-card` werden in der PC-Workbench entfernt.
+* Klassische Card-Maximize-Overlays dürfen in der PC-Desktop-Umgebung keine Klicks mehr blockieren.
+* Nicht geöffnete oder minimierte Desktop-Fenster erhalten keine Pointer-Events mehr.
+* Verwaiste Editor-/Modal-Backdrops werden in der PC-Workbench deaktiviert, wenn kein Editor wirklich geöffnet ist.
+* Desktop-Icons, Taskbar, Fensterleisten, geöffnete Fenster und bewegliche Live Console bleiben weiterhin bedienbar.
+
+#### Scope
+
+* Nur Härtung und Bugfix für die PC-Desktop-Umgebung.
+* Keine Änderungen an Mobile UX.
+* Keine Änderungen an Datei-/Backend-/CodeQL-Logik.
+* Keine neuen Layoutmodi.
+
+#### Version
+
+* Version auf `WinoMCConsole/1.6.14.4` angehoben.
+
 ### 1.6.14.3
 
 #### Mobile UX Hardening

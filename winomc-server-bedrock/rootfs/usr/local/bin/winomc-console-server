@@ -3860,6 +3860,65 @@ INDEX_HTML = r"""<!doctype html>
       z-index: 180 !important;
     }
 
+
+
+    /* v1.6.14.4 Desktop Workbench blocker hardening
+       Surgical scope: remove stale classic/editor/modal blockers while the
+       PC Workbench is active. The desktop windows, icons, taskbar and movable
+       Live Console keep their existing behavior. */
+    body.desktop-mode.has-maximized-card::after {
+      content: none !important;
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    body.desktop-mode .card.maximized {
+      position: static !important;
+      inset: auto !important;
+      z-index: auto !important;
+      width: auto !important;
+      height: auto !important;
+      max-width: none !important;
+      max-height: none !important;
+      overflow: visible !important;
+      box-shadow: none !important;
+    }
+
+    body.desktop-mode .tab-panel:not(.desktop-open),
+    body.desktop-mode .tab-panel.desktop-minimized {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+
+    body.desktop-mode:not(.editor-modal-open) .editor-modal-backdrop,
+    body.desktop-mode .editor-modal-backdrop[aria-hidden="true"],
+    body.desktop-mode .modal-backdrop:not(.open) {
+      display: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      opacity: 0 !important;
+    }
+
+    body.desktop-mode .desktop-layer {
+      pointer-events: none !important;
+    }
+
+    body.desktop-mode .desktop-icon-grid,
+    body.desktop-mode .desktop-icon,
+    body.desktop-mode .desktop-taskbar,
+    body.desktop-mode .desktop-taskbar *,
+    body.desktop-mode .desktop-window-bar,
+    body.desktop-mode .desktop-window-bar *,
+    body.desktop-mode .tab-panel.desktop-open,
+    body.desktop-mode .tab-panel.desktop-open *,
+    body.desktop-mode .console-dock,
+    body.desktop-mode .console-dock * {
+      pointer-events: auto;
+    }
+
 </style>
 </head>
 <body>
@@ -6912,6 +6971,88 @@ INDEX_HTML = r"""<!doctype html>
       console.info('[WinoMC UX] Mobile hardening loaded ' + VERSION_16143);
     })();
 
+
+
+    /* v1.6.14.4 Desktop Workbench blocker hardening
+       Only clears stale blocking layers in PC Workbench mode. It does not
+       change window sizing, mobile behavior, file APIs, or console logic. */
+    (function hardenDesktopWorkbenchBlockers16144() {
+      const VERSION_16144 = '1.6.14.4';
+
+      function desktopActive16144() {
+        return document.body.classList.contains('desktop-mode');
+      }
+
+      function editorIsReallyOpen16144() {
+        return !!(window.editorPanel && (editorPanel.classList.contains('editor-open') || editorPanel.classList.contains('editor-fullscreen')));
+      }
+
+      function clearDesktopWorkbenchBlockers16144() {
+        if (!desktopActive16144()) return;
+
+        // Classic card maximization uses body.has-maximized-card + ::after.
+        // In the PC Workbench this state is stale and can create an invisible
+        // click-blocking panel over the lower desktop area.
+        document.body.classList.remove('has-maximized-card');
+        document.querySelectorAll('.card.maximized').forEach(card => card.classList.remove('maximized'));
+
+        // Non-open or minimized windows must never receive pointer events.
+        document.querySelectorAll('.tab-panel').forEach(panel => {
+          const open = panel.classList.contains('desktop-open') && !panel.classList.contains('desktop-minimized');
+          if (open) {
+            panel.style.removeProperty('pointer-events');
+            panel.style.removeProperty('visibility');
+          } else {
+            panel.style.pointerEvents = 'none';
+            panel.style.visibility = 'hidden';
+          }
+        });
+
+        // The editor modal backdrop is valid only while the editor is really open.
+        if (!editorIsReallyOpen16144()) {
+          document.body.classList.remove('editor-modal-open');
+          const editorBackdrop = document.getElementById('editorModalBackdrop');
+          if (editorBackdrop) {
+            editorBackdrop.setAttribute('aria-hidden', 'true');
+            editorBackdrop.style.pointerEvents = 'none';
+            editorBackdrop.style.display = 'none';
+          }
+        }
+      }
+
+      function wrapDesktopFunction16144(name, after) {
+        try {
+          const original = window[name] || globalThis[name];
+          if (typeof original !== 'function' || original.__winomc16144Wrapped) return;
+          const wrapped = function(...args) {
+            const result = original.apply(this, args);
+            window.requestAnimationFrame(after);
+            return result;
+          };
+          wrapped.__winomc16144Wrapped = true;
+          globalThis[name] = wrapped;
+          try { window[name] = wrapped; } catch (_) {}
+        } catch (_) {
+          // Non-critical hardening hook. CSS still protects the workbench.
+        }
+      }
+
+      wrapDesktopFunction16144('setDesktopMode', clearDesktopWorkbenchBlockers16144);
+      wrapDesktopFunction16144('openDesktopWindow', clearDesktopWorkbenchBlockers16144);
+      wrapDesktopFunction16144('updateDesktopTaskbar', clearDesktopWorkbenchBlockers16144);
+
+      document.addEventListener('pointerdown', () => {
+        if (desktopActive16144()) clearDesktopWorkbenchBlockers16144();
+      }, true);
+
+      window.addEventListener('resize', () => window.requestAnimationFrame(clearDesktopWorkbenchBlockers16144), { passive: true });
+      window.addEventListener('orientationchange', () => window.setTimeout(clearDesktopWorkbenchBlockers16144, 150), { passive: true });
+
+      window.requestAnimationFrame(clearDesktopWorkbenchBlockers16144);
+      window.setTimeout(clearDesktopWorkbenchBlockers16144, 300);
+      console.info('[WinoMC UX] Desktop Workbench blocker hardening loaded ' + VERSION_16144);
+    })();
+
 </script>
 </body>
 </html>
@@ -8167,7 +8308,7 @@ def safe_content_disposition_attachment(download_name):
     return "attachment; filename=\"%s\"; filename*=UTF-8''%s" % (download_name, quote(download_name, safe=""))
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "WinoMCConsole/1.6.14.3"
+    server_version = "WinoMCConsole/1.6.14.4"
 
     def log_message(self, fmt, *args):
         sys.stdout.write("[WinoMC Console] " + fmt % args + "\n")
