@@ -5,6 +5,45 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.14.2
+
+#### UX / Mobile Live Console
+
+* Mobile Größenlogik der Live Console überarbeitet.
+* `Groß` ist auf Mobile wieder ein großer angedockter Konsolenmodus und kein Vollbild-Alias mehr.
+* `Vollbild` ist nun der einzige echte Vollbildmodus.
+* Erneuter Klick auf `Vollbild` beziehungsweise der angezeigte `Normal`-Button kehrt zuverlässig zur vorherigen Größe zurück.
+* Mobile Konsolengrößen begrenzt:
+  * `Kompakt`: kleinste nutzbare Ansicht mit Eingabe und ungefähr drei Logzeilen.
+  * `Normal`: mittlere Standardansicht.
+  * `Groß`: maximal etwa halbe Bildschirmhöhe.
+  * `Vollbild`: echtes Overlay für längere Konsolenarbeit.
+* Mobile Touch-Verhalten der Konsolenbuttons stabilisiert, damit keine Textmarkierung oder falsche Button-Aktion ausgelöst wird.
+
+#### UX / Mobile Dateimanager
+
+* Mobile Dateimanager-Ansicht stärker auf die Dateiliste fokussiert.
+* Sekundäre Werkzeuge bleiben hinter `Werkzeuge anzeigen` gebündelt, unabhängig von der tatsächlichen CSS-Browserbreite.
+* Kopfbereich des Dateimanagers kompakter gestaltet.
+* Status, Beschreibung, Breadcrumb und doppelte Explorer-Aktionsleiste auf Mobile reduziert oder ausgeblendet.
+* Upload-Zone kompakter gemacht.
+* Dateiliste erhält deutlich mehr Höhe und bleibt der zentrale Arbeitsbereich.
+* Mobile Datei-Karten kompakter gestaltet:
+  * kleinere Abstände,
+  * weniger Label-Ballast,
+  * kompaktere Aktionstaste,
+  * bessere Scrollbarkeit.
+
+#### Maintenance
+
+* Version auf `WinoMCConsole/1.6.14.2` angehoben.
+* Kein Backend-/Dateisystemverhalten verändert.
+* Security-/CodeQL-Logik aus den vorherigen Versionen bleibt unverändert.
+* Lokale Prüfungen:
+  * `python3 -m py_compile`
+  * `node --check` für das eingebettete JavaScript
+  * ZIP-Struktur geprüft
+
 ### 1.6.14.1
 
 #### UX / Live Console
