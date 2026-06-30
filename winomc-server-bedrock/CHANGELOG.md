@@ -194,28 +194,45 @@ WinoMC Console Fehlerbehebungen
 
 ### 1.6.14.6
 
-#### PC-Desktop / Workbench
+* der Größenänderungsgriff der Live Console ist in der klassischen PC-Ansicht wieder vorhanden
+der Griff ist nur in sinnvoll nutzbaren Zuständen aktiv, nicht bei eingeklappt/versteckt/Vollbild
+* Größenänderungen der Live Console verändern nicht mehr ständig die Layout-Höhe von Navigation und Dateimanager
+der Dateimanager/Explorer bekommt wieder eine größere nutzbare Inhaltsfläche
+die Dateiliste bleibt intern scrollbar
+* Desktop-Workbench, Mobile, Serverlogik, Datei-API und Dashboard-Funktionen wurden nicht funktional umgebaut
+* Version gesetzt auf WinoMCConsole/1.6.14.11
 
-* Gezielter Fix für die blockierende Fläche im unteren Desktopbereich.
-* Ursache: bestimmte Desktop-Fenster wurden mit fixer/gespeicherter Höhe geöffnet und deckten als leere, nicht sinnvoll bedienbare Fensterfläche den Desktop bis zur Taskleiste ab.
-* Übersicht, Dashboard, Server, Packs, Backups, Netzwerk und Experten nutzen im PC-Desktop nun natürliche Fensterhöhe statt dauerhaft großer Leerfläche.
-* Große Arbeitsfenster wie Dateien bleiben von dieser Änderung ausgenommen.
-* Veraltete gespeicherte Höhenwerte für einfache Desktop-Fenster werden bereinigt.
-* Klassische Card-Maximize-Overlays werden im PC-Desktop deaktiviert, damit sie keine Klicks blockieren.
+### 1.6.14.10
 
-#### Nicht geändert
+* klassische PC-Ansicht: der freie Drag-Größenregler der Live Console wird ausgeblendet
+* dadurch kann er nicht mehr versehentlich die Navigations-/Layout-Höhe beeinflussen
+* die Größenknöpfe der Live Console funktionieren am PC wieder:
+* Kompakt
+* Normal
+* Groß
+* Vollbild
+* die PC-Workbench-Konsole bleibt weiterhin verschiebbar und größenveränderbar
+* der Desktop-Freiflächen-Fix aus 1.6.14.9 bleibt erhalten
+* Mobile wurde funktional nicht angefasst
+* Version gesetzt auf WinoMCConsole/1.6.14.10
 
-* Keine Mobile-Änderungen.
-* Keine Live-Console-Änderungen.
-* Keine Backend-/Dateisystem-/Security-Änderungen.
-* Keine neuen Layoutmodi.
+### 1.6.14.9
 
-#### Maintenance
+* PC-Desktop-Freifläche wird wieder bis zur Taskleiste korrekt als Desktop-Fläche behandelt
+der dunkle Blocker-Bereich unterhalb des Desktops wird beseitigt
+* Live Console wird nicht mehr beim Bewegen in der Größe verändert
+* Live Console wird nicht mehr künstlich unten rechts eingesnappt
+* Größenänderung der Live Console bleibt wieder möglich
+* klassische Ansicht und Mobile wurden nicht funktional angefasst
+* Version gesetzt auf WinoMCConsole/1.6.14.9
 
-* Version auf `WinoMCConsole/1.6.14.6` angehoben.
-* Python-Syntaxprüfung durchgeführt.
-* Eingebettetes JavaScript mit Node geprüft.
-* Repo-ZIP-Struktur geprüft.
+### 1.6.14.8
+
+WinoMC Console Fehlerbehebungen
+
+### 1.6.14.7
+
+WinoMC Console Fehlerbehebungen
 
 ### 1.6.14.4
 
