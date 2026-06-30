@@ -5,6 +5,193 @@
 * Geplante weitere Verbesserungen
 * Weitere Optimierungen für Bedienbarkeit, Dokumentation und Add-on-Kompatibilität
 
+### 1.6.14.23
+* Klassische PC-Ansicht: Dateiexplorer sauber an den Inhaltsbereich oberhalb der Live Console gebunden.
+* Klassische PC-Ansicht: Dateiliste nutzt den verfügbaren Platz im Dateien-Tab und scrollt intern.
+* Klassische PC-Ansicht: Explorer läuft nicht mehr hinter die Live Console und verdeckt keine Dateizeilen.
+* Klassische PC-Ansicht: Dateiexplorer wird ausschließlich im aktiven Menüpunkt `Dateien` dargestellt.
+* Andere PC-Menüpunkte reservieren keine Explorer-Fläche und zeigen keine Explorer-Reste mehr.
+* PC-Workbench/Desktop-Dateifenster bleibt von der klassischen Frame-Korrektur getrennt.
+* Mobile-Ansicht bleibt unverändert und weiterhin von PC-Layoutregeln getrennt.
+
+### 1.6.14.22
+
+* Klassische PC-Ansicht: Dateiexplorer sauber an den Inhaltsbereich oberhalb der Live Console gebunden.
+* Klassische PC-Ansicht: Dateiliste nutzt den verfügbaren Platz im Dateien-Tab und scrollt intern.
+* Klassische PC-Ansicht: Explorer läuft nicht mehr hinter die Live Console und verdeckt keine Dateizeilen.
+* Klassische PC-Ansicht: Dateiexplorer wird ausschließlich im aktiven Menüpunkt `Dateien` dargestellt.
+* Andere PC-Menüpunkte reservieren keine Explorer-Fläche und zeigen keine Explorer-Reste mehr.
+* PC-Workbench/Desktop-Dateifenster bleibt von der klassischen Frame-Korrektur getrennt.
+* Mobile-Ansicht bleibt unverändert und weiterhin von PC-Layoutregeln getrennt.
+* Ursache dokumentiert und behoben: alte UI-Fixes wurden zwar teilweise ausgelagert, aber der Patch-Mechanismus entfernte nur die aktuellen 1.6.14.21b-IDs und konnte beim nächsten Lauf alte oder aktuelle Injektionen parallel stehen lassen.
+* Patch-Mechanismus idempotent erweitert: alte 1.6.14.21b- und neue 1.6.14.22b-Style-/Script-Blöcke werden vor jeder Neu-Injektion entfernt und danach zuverlässig neu eingefügt.
+* Version gesetzt auf `WinoMCConsole/1.6.14.22`.
+* PC- und Mobile-Shell bleiben strikt getrennt über `winomc-pc` und `winomc-mobile`.
+* PC-Dateimanager in der klassischen Ansicht nutzt jetzt ebenfalls ein einspaltiges Explorer-Layout, damit der ausgelagerte PC-Editor nicht mehr über Grid-/Splitter-Spalten klein gerechnet wird.
+* PC-Workbench-Dateifenster bleibt ein großes, intern scrollbar nutzbares Fenster ohne versteckte Editor-/Splitter-Platzhalter.
+* PC-Router beobachtet nur noch relevante Body-Klassen statt alle Style-Änderungen im gesamten DOM, damit die Reparaturlogik keine selbst ausgelösten Mutation-Loops erzeugt.
+* Mobile-Tab-Isolation bleibt eigenständig und blendet den Dateiexplorer außerhalb des aktiven Dateien-Menüs aus.
+
+### 1.6.14.21
+
+* PC- und Mobile-UI strikt getrennt: eigene CSS-Dateien, eigene JavaScript-Module und ein kleiner Shell-Router als einzige Brücke.
+* Neue PC-UI-Dateien ergänzt:
+  * `rootfs/usr/local/share/winomc-console/pc.css`
+  * `rootfs/usr/local/share/winomc-console/pc.js`
+* Neue Mobile-UI-Dateien ergänzt:
+  * `rootfs/usr/local/share/winomc-console/mobile.css`
+  * `rootfs/usr/local/share/winomc-console/mobile.js`
+* Neuer Shell-Router ergänzt:
+  * `rootfs/usr/local/share/winomc-console/shell-router.js`
+* Der Patch-Mechanismus lädt die getrennten UI-Dateien und injiziert PC- und Mobile-Code getrennt in die Webconsole.
+* Alte UI-Notfallpatches von 1.6.14.14b bis 1.6.14.20b werden beim Patchen entfernt, damit sie nicht weiter gegen die neue Struktur arbeiten.
+* PC-Editor wird im PC-Modul aus dem Dateimanager-Grid in eine eigene PC-Layer verschoben und dadurch von alten Grid-/Mobile-Regeln getrennt.
+* PC-Editor nutzt eigene Zustände und eigene CSS-Regeln:
+  * `winomc-pc`
+  * `winomc-pc-editor-open`
+  * `winomc-pc-editor-fullscreen`
+  * `winomc-pc-editor`
+* Mobile nutzt eigene Zustände und eigene CSS-Regeln:
+  * `winomc-mobile`
+* Mobile stellt nur aktive Menüpunkte dar und erhält keine PC-Editor-/Desktop-Fensterlogik.
+* Gemeinsame Logik wie Datei-API, Dateiliste, Lesen/Speichern, Upload, Download, Konsole und Status bleibt als Modul im bestehenden Webconsole-Kern erhalten.
+* Version gesetzt auf `WinoMCConsole/1.6.14.21`.
+
+### 1.6.14.20
+
+* PC-Editor weiter stabilisiert: normales Öffnen nutzt jetzt ein zentriertes, großes Arbeitsfenster statt ein breakpoint-abhängiges Seitenfenster.
+* PC-Editor ist nicht mehr von der Home-Assistant-Ingress-Iframe-Breite abhängig.
+* PC-Editor-Größe wird beim Öffnen, bei Fenstergrößenänderung und bei alten Editor-Zuständen laufend stabilisiert.
+* Editor-Aktionsleiste wird auf PC wieder als kompakte Button-Zeile dargestellt und nicht mehr als große vertikale Mobile-Schaltflächen.
+* Editor-Vollbild bleibt ein eigener Vollbildzustand innerhalb des WinoMC-Iframes.
+* Alte Blur-, Modal- und Card-Maximize-Zustände werden beim PC-Editor entfernt.
+* Desktop-Dateiexplorer bleibt weiterhin auf eine große, einspaltige Fensterfläche mit intern scrollbarer Dateiliste gehärtet.
+* Version gesetzt auf `WinoMCConsole/1.6.14.20`.
+
+### 1.6.14.19
+
+* PC-Erkennung läuft nicht mehr über @media (min-width: 1051px), weil Home-Assistant-Ingress auf PC oft schmale Iframes erzeugt.
+* Neue Trennung über Eingabegerät/Browser:
+* PC: winomc-pc-shell
+* Mobile: winomc-mobile-shell
+* PC-Editor wird per Runtime hart als großes Vordergrundfenster gesetzt.
+* Alte Blur-/Modal-/Card-Overlays werden beim PC-Editor aktiv entfernt.
+* Editor-Größe wird zusätzlich per Inline-Styles stabilisiert, damit alte CSS-Regeln ihn nicht wieder klein/rechts anordnen.
+* Desktop-Dateiexplorer wird im Desktop-Modus auf eine große nutzbare Fensterfläche gezwungen.
+* Datei-Grid im Desktop-Modus bleibt einspaltig; versteckter Editor/Splitter reserviert keinen Platz mehr.
+* Version steht auf 1.6.14.19b.
+
+### 1.6.14.18
+
+* Mobile- und PC-UI-Regeln sauber getrennt, damit Änderungen am PC die Mobile-Ansicht nicht mehr beeinflussen.
+* PC-Editor neu verdrahtet: Öffnen, Schließen und Vollbild nutzen eigene PC-Zustände statt Mobile-/Card-Overlay-Logik.
+* PC-Editor entfernt alte Blur-/Modal-/Card-Maximize-Zustände und öffnet als großes Vordergrundfenster.
+* PC-Workbench/Desktop-Modus: Dateiexplorer nutzt ein einspaltiges, hohes Dateifenster ohne reservierten Editor-/Splitter-Leerraum.
+* Desktop-Dateiliste bleibt intern scrollbar und erhält eine brauchbare Mindesthöhe.
+* Die neuen UI-Overrides werden in einem eigenen finalen Style-Block nach alten Desktop-Ingress-Regeln eingefügt.
+* Version gesetzt auf WinoMCConsole/1.6.14.18.
+
+### 1.6.14.17
+
+* Mobile: Dateiexplorer wird nur noch im aktiven Dateien-Menü angezeigt und nicht mehr auf allen Menüpunkten eingeblendet.
+* PC: Editor öffnet wieder als großes Overlay statt als zu kleiner Bereich im Explorer-Grid.
+* PC: Editor-Vollbild entfernt alte Card-/Blur-Zustände und nutzt die verfügbare Vordergrundfläche.
+* PC-Workbench/Desktop-Modus: Dateiexplorer bekommt eine brauchbare Mindestgröße und eine intern scrollbare Dateiliste.
+* Desktop-Dateifenster reserviert keinen unnötigen Platz mehr für einen versteckten Editor/Splitter.
+* Version gesetzt auf WinoMCConsole/1.6.14.17.
+
+### 1.6.14.16
+
+* PC-UI-Zustände getrennt: Card-Maximize, Editor-Vollbild und Desktop-Fenster-Maximize verwenden nicht mehr dieselbe Overlay-/Blur-Logik.
+* Editor: Vollbild entfernt Card-Maximize-Zustände und öffnet als eigener Vordergrundzustand ohne Blur-Overlay.
+* Editor: normal geöffnete Dateien bleiben als Editorbereich im Dateimanager statt als falsches globales Overlay zu erscheinen.
+* Desktop-Modus: Dateifenster öffnet wieder mit brauchbarer Standardgröße und korrigiert alte gespeicherte zu kleine Dateifenster.
+* Desktop-Modus: Explorer-Liste nutzt die verfügbare Fensterhöhe und bleibt intern scrollbar.
+* Klassische PC-Ansicht: aktive Dashboard-Kacheln erhalten eine eigene Scrollregion, damit untere Kacheln erreichbar bleiben.
+* Version gesetzt auf WinoMCConsole/1.6.14.16.
+
+### 1.6.14.15
+
+* Klassische PC-Ansicht: aktive Kacheln im persönlichen Dashboard bleiben auch bei vielen Kacheln scrollbar erreichbar.
+* Editor: Vollbild entfernt alte Blur-/Card-Maximize-Zustände und öffnet wieder als echtes Editor-Fenster.
+* Desktop-Modus: Dateiexplorer nutzt die verfügbare Fensterhöhe wieder stabiler und ohne ungenutzten Editor-/Leerbereich.
+* Desktop-Modus: Dateitabelle bleibt intern scrollbar und erhält wieder eine brauchbare Inhaltsfläche.
+* Mobile, Datei-API und Serverlogik wurden nicht funktional umgebaut.
+* Version gesetzt auf WinoMCConsole/1.6.14.15.
+
+### 1.6.14.14
+
+* Klassische PC-Ansicht: persönliches Dashboard bekommt eine belastbare Scrollfläche im oberen Inhalts-Frame.
+* Editor: Vollbild in der klassischen PC-Ansicht öffnet wieder als echtes Editor-Fenster statt nur ein Blur-Overlay zu zeigen.
+* Editor: alte Card-Maximize-/Blur-Zustände werden in der klassischen PC-Ansicht beim Editor-Vollbild entfernt.
+* PC-Workbench, Mobile, Datei-API und Serverlogik wurden nicht funktional umgebaut.
+* Version gesetzt auf WinoMCConsole/1.6.14.14.
+
+### 1.6.14.13
+
+* Klassische PC-Ansicht weiter gehärtet: Navigation, Inhalt und Live Console bleiben als drei klare Frames erhalten.
+* Dateimanager: Der Editor ist im Explorer wieder ausgeblendet und erscheint erst beim Öffnen/Bearbeiten einer Datei.
+* Dateimanager: Die Explorer-Inhaltsfläche nutzt den verfügbaren Platz wieder vollständig und bleibt intern scrollbar.
+* Persönliches Dashboard: neue Befehle und aktive Kacheln bleiben innerhalb des Dashboard-Frames scrollbar erreichbar.
+* Befehlshilfe: Vorschläge und Hilfstext sind optisch sauberer getrennt.
+* PC-Workbench, Mobile, Datei-API und Serverlogik wurden nicht funktional umgebaut.
+* Version gesetzt auf WinoMCConsole/1.6.14.13.
+
+### 1.6.14.12
+
+* klassische PC-Ansicht nutzt jetzt sauber:
+* Frame 1: Navigation links
+* Frame 2: Inhaltsbereich rechts
+* Frame 3: Live Console unten
+* wenn die Live Console größer/kleiner gezogen wird, verkleinern/vergrößern sich Navigation und Inhaltsbereich gemeinsam
+der Größenänderungsknopf der Live Console bleibt in der klassischen PC-Ansicht vorhanden
+* persönliches Dashboard bekommt eine eigene Scrollfläche, damit Kacheln erreichbar bleiben
+* Explorer bleibt intern scrollbar und wird nicht mehr künstlich winzig gemacht
+* PC-Workbench, Mobile, Datei-API und Serverlogik wurden nicht funktional umgebaut
+* Version gesetzt auf WinoMCConsole/1.6.14.12
+
+### 1.6.14.11
+
+* der Größenänderungsgriff der Live Console ist in der klassischen PC-Ansicht wieder vorhanden
+der Griff ist nur in sinnvoll nutzbaren Zuständen aktiv, nicht bei eingeklappt/versteckt/Vollbild
+* Größenänderungen der Live Console verändern nicht mehr ständig die Layout-Höhe von Navigation und Dateimanager
+der Dateimanager/Explorer bekommt wieder eine größere nutzbare Inhaltsfläche
+die Dateiliste bleibt intern scrollbar
+* Desktop-Workbench, Mobile, Serverlogik, Datei-API und Dashboard-Funktionen wurden nicht funktional umgebaut
+* Version gesetzt auf WinoMCConsole/1.6.14.11
+
+### 1.6.14.10
+
+* klassische PC-Ansicht: der freie Drag-Größenregler der Live Console wird ausgeblendet
+* dadurch kann er nicht mehr versehentlich die Navigations-/Layout-Höhe beeinflussen
+* die Größenknöpfe der Live Console funktionieren am PC wieder:
+* Kompakt
+* Normal
+* Groß
+* Vollbild
+* die PC-Workbench-Konsole bleibt weiterhin verschiebbar und größenveränderbar
+* der Desktop-Freiflächen-Fix aus 1.6.14.9 bleibt erhalten
+* Mobile wurde funktional nicht angefasst
+* Version gesetzt auf WinoMCConsole/1.6.14.10
+
+### 1.6.14.9
+
+* PC-Desktop-Freifläche wird wieder bis zur Taskleiste korrekt als Desktop-Fläche behandelt
+der dunkle Blocker-Bereich unterhalb des Desktops wird beseitigt
+* Live Console wird nicht mehr beim Bewegen in der Größe verändert
+* Live Console wird nicht mehr künstlich unten rechts eingesnappt
+* Größenänderung der Live Console bleibt wieder möglich
+* klassische Ansicht und Mobile wurden nicht funktional angefasst
+* Version gesetzt auf WinoMCConsole/1.6.14.9
+
+### 1.6.14.8
+
+WinoMC Console Fehlerbehebungen
+
+### 1.6.14.7
+
+WinoMC Console Fehlerbehebungen
+
 ### 1.6.14.6
 
 #### PC-Desktop / Workbench
